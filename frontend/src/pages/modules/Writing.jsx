@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PenTool, Clock, Send, FileText, CheckCircle, AlertCircle, Sparkles, RotateCcw } from 'lucide-react'
 import api from '../../services/api'
+import { evaluateWriting } from '../../utils/localScoring'
 
 export default function Writing() {
     const [prompts, setPrompts] = useState([])
@@ -51,29 +52,12 @@ export default function Writing() {
 
         setSubmitting(true)
         try {
-            const response = await api.post('/writing/submit', {
-                prompt_id: selectedPrompt.id,
-                text: essay,
-                time_taken: timeElapsed
-            })
-            setFeedback(response.data)
+            // Local Evaluation
+            const result = await evaluateWriting(essay, timeElapsed)
+            setFeedback(result)
         } catch (error) {
             console.error('Failed to submit:', error)
-            // Mock feedback for demo
-            setFeedback({
-                score: 82,
-                feedback: {
-                    content: 'Your essay addresses the topic well with clear arguments.',
-                    organization: 'Good structure with introduction, body, and conclusion.',
-                    grammar: 'Minor grammatical errors detected. Consider reviewing subject-verb agreement.',
-                    vocabulary: 'Good word variety. Consider using more advanced vocabulary.',
-                },
-                suggestions: [
-                    'Add more specific examples to support your arguments',
-                    'Vary sentence structure for better flow',
-                    'Consider a stronger concluding statement'
-                ]
-            })
+            setSubmitting(false)
         } finally {
             setSubmitting(false)
         }

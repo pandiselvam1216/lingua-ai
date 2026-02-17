@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
+import { getLocalState } from '../utils/localScoring'
 
 const modules = [
     { path: '/listening', icon: Headphones, title: 'Listening', desc: 'Audio comprehension', color: '#3B82F6', bg: '#EFF6FF' },
@@ -19,20 +20,22 @@ const modules = [
     { path: '/critical-thinking', icon: Brain, title: 'Critical Thinking', desc: 'JAM sessions', color: '#EC4899', bg: '#FDF2F8' },
 ]
 
-const stats = [
-    { icon: TrendingUp, label: 'Overall Progress', value: '68%', color: '#3B82F6', bg: '#EFF6FF' },
-    { icon: Award, label: 'Lessons Completed', value: '24', color: '#10B981', bg: '#ECFDF5' },
-    { icon: Target, label: 'Current Streak', value: '7 days', color: '#F59E0B', bg: '#FFFBEB' },
-    { icon: Clock, label: 'Time Spent', value: '12.5 hrs', color: '#8B5CF6', bg: '#F5F3FF' },
-]
-
-const chartData = [
-    { day: 'Mon', score: 65 }, { day: 'Tue', score: 72 }, { day: 'Wed', score: 68 },
-    { day: 'Thu', score: 78 }, { day: 'Fri', score: 82 }, { day: 'Sat', score: 85 }, { day: 'Sun', score: 80 },
+const defaultStats = [
+    { icon: TrendingUp, label: 'Overall Progress', value: '0%', color: '#3B82F6', bg: '#EFF6FF', key: 'overallScore', suffix: '%' },
+    { icon: Award, label: 'Lessons Completed', value: '0', color: '#10B981', bg: '#ECFDF5', key: 'modulesCompleted' },
+    { icon: Target, label: 'Current Streak', value: '1 day', color: '#F59E0B', bg: '#FFFBEB', key: 'streakDays', suffix: ' days' },
+    { icon: Clock, label: 'Time Spent', value: '0m', color: '#8B5CF6', bg: '#F5F3FF', key: 'timeSpentMinutes', suffix: 'm' },
 ]
 
 export default function Dashboard() {
     const { user } = useAuth()
+    const localState = getLocalState()
+    const { metrics, chartData } = localState
+
+    const stats = defaultStats.map(s => ({
+        ...s,
+        value: (metrics[s.key] || 0) + (s.suffix || '')
+    }))
 
     return (
         <div style={{ padding: '24px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, Clock, Send, RotateCcw, CheckCircle, AlertCircle, Volume2 } from 'lucide-react'
 import api from '../../services/api'
+import { evaluateSpeaking } from '../../utils/localScoring'
 
 export default function Speaking() {
     const [prompts, setPrompts] = useState([])
@@ -108,24 +109,19 @@ export default function Speaking() {
 
         setSubmitting(true)
         try {
-            const response = await api.post('/speaking/evaluate', {
-                prompt_id: selectedPrompt.id,
-                transcript: transcript
-            })
-            setFeedback(response.data)
+            // Local Evaluation
+            const totalTime = selectedPrompt.time_limit || 60
+            const elapsed = totalTime - timeLeft // Rough estimate
+            const result = evaluateSpeaking(transcript, elapsed)
+
+            // Artificial delay to feel like "Analysis"
+            setTimeout(() => {
+                setFeedback(result)
+                setSubmitting(false)
+            }, 1500)
+
         } catch (error) {
             console.error('Failed to submit:', error)
-            setFeedback({
-                success: true,
-                score: 75,
-                feedback: {
-                    fluency: 'Good pace with minor hesitations.',
-                    pronunciation: 'Clear articulation overall.',
-                    grammar: 'Some grammatical improvements needed.',
-                    vocabulary: 'Appropriate word choice.',
-                }
-            })
-        } finally {
             setSubmitting(false)
         }
     }
