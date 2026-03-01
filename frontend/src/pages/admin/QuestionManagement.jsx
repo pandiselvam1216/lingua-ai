@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     BookOpen, Plus, Edit2, Trash2, X, Check, Search,
-    Headphones, Mic, FileText, PenTool, CheckSquare
+    Headphones, Mic, FileText, PenTool, CheckSquare, Upload, FileUp, Eye
 } from 'lucide-react'
 import api from '../../services/api'
+import { supabase } from '../../utils/supabaseClient'
 
 const moduleIcons = {
     listening: Headphones,
@@ -29,13 +30,33 @@ export default function QuestionManagement() {
     const [showModal, setShowModal] = useState(false)
     const [editingQuestion, setEditingQuestion] = useState(null)
     const [search, setSearch] = useState('')
+    const [saving, setSaving] = useState(false)
+    const [saveError, setSaveError] = useState('')
+    const [saveSuccess, setSaveSuccess] = useState(false)
+    const [usingLocalStorage, setUsingLocalStorage] = useState(false)
     const [formData, setFormData] = useState({
+        title: '',
         content: '',
         difficulty: 1,
         options: [{ text: '', value: 'A' }, { text: '', value: 'B' }, { text: '', value: 'C' }, { text: '', value: 'D' }],
         correct_answer: 'A',
-        explanation: ''
+        explanation: '',
+        audio_data: null,  // base64 data URL for listening audio
+        pdf_name: null,    // uploaded PDF filename
     })
+    const [pdfLoading, setPdfLoading] = useState(false)
+    const [pdfDragOver, setPdfDragOver] = useState(false)
+    const pdfInputRef = useRef(null)
+
+    // --- LocalStorage helpers ---
+    const LS_KEY = `neuralingua_questions_${activeModule}`
+
+    const getLocalQuestions = () => {
+        try { return JSON.parse(localStorage.getItem(`neuralingua_questions_${activeModule}`)) || [] }
+        catch { return [] }
+    }
+    const saveLocalQuestions = (list) =>
+        localStorage.setItem(`neuralingua_questions_${activeModule}`, JSON.stringify(list))
 
     useEffect(() => {
         fetchQuestions()
@@ -44,58 +65,125 @@ export default function QuestionManagement() {
     const fetchQuestions = async () => {
         setLoading(true)
         try {
-            let endpoint = `/${activeModule}/questions`
-            let dataKey = 'questions'
+            const { data: sbData, error } = await supabase
+                .from('questions')
+                .select('*')
+                .eq('module', activeModule)
+                .order('created_at', { ascending: false })
 
-            if (['speaking', 'writing'].includes(activeModule)) {
-                endpoint = `/${activeModule}/prompts`
-                dataKey = 'prompts'
+            if (!error) {
+                // Supabase table exists — use it
+                setUsingLocalStorage(false)
+                const normalized = (sbData || []).map(item => ({
+                    id: item.id,
+                    content: item.content,
+                    difficulty: item.difficulty || 1,
+                    options: item.options,
+                    correct_answer: item.correct_answer,
+                    explanation: item.explanation,
+                    type: ['speaking', 'writing'].includes(activeModule) ? 'prompt' : 'mcq'
+                }))
+                setQuestions(normalized)
+                setLoading(false)
+                return
             }
+        } catch (_) { /* ignore */ }
 
-            const response = await api.get(endpoint)
-            const items = response.data[dataKey] || []
-
-            // Normalize data
-            const normalized = items.map(item => ({
-                id: item.id,
-                content: item.content || item.title, // Handle prompts having title
-                prompt_content: item.content, // Store original content if needed
-                difficulty: item.difficulty || 1,
-                options: item.options,
-                correct_answer: item.correct_answer,
-                type: ['speaking', 'writing'].includes(activeModule) ? 'prompt' : 'mcq'
-            }))
-
-            setQuestions(normalized)
-        } catch (error) {
-            console.error('Failed to fetch questions:', error)
-            setQuestions([])
-        } finally {
-            setLoading(false)
-        }
+        // Supabase table missing — use localStorage
+        setUsingLocalStorage(true)
+        setQuestions(getLocalQuestions())
+        setLoading(false)
     }
 
     const handleOpenModal = (question = null) => {
         if (question) {
             setEditingQuestion(question)
             setFormData({
+                title: question.title || '',
                 content: question.content,
                 difficulty: question.difficulty,
                 options: question.options || [{ text: '', value: 'A' }, { text: '', value: 'B' }, { text: '', value: 'C' }, { text: '', value: 'D' }],
                 correct_answer: question.correct_answer,
-                explanation: question.explanation || ''
+                explanation: question.explanation || '',
+                audio_data: question.audio_data || null,
+                pdf_name: question.pdf_name || null,
             })
         } else {
             setEditingQuestion(null)
             setFormData({
+                title: '',
                 content: '',
                 difficulty: 1,
                 options: [{ text: '', value: 'A' }, { text: '', value: 'B' }, { text: '', value: 'C' }, { text: '', value: 'D' }],
                 correct_answer: 'A',
-                explanation: ''
+                explanation: '',
+                audio_data: null,
+                pdf_name: null,
             })
         }
         setShowModal(true)
+    }
+
+    // ---- PDF Text Extraction (pdfjs via CDN) ----
+    const extractPdfText = async (file) => {
+        setPdfLoading(true)
+        try {
+            // Load pdfjs from CDN dynamically (no npm install needed)
+            if (!window.pdfjsLib) {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script')
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+                    script.onload = resolve
+                    script.onerror = reject
+                    document.head.appendChild(script)
+                })
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+            }
+
+            const arrayBuffer = await file.arrayBuffer()
+            const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise
+            let fullText = ''
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i)
+                const textContent = await page.getTextContent()
+                const pageText = textContent.items.map(item => item.str).join(' ')
+                fullText += (i > 1 ? '\n\n' : '') + pageText
+            }
+            setFormData(p => ({
+                ...p,
+                content: fullText.trim(),
+                pdf_name: file.name,
+                title: p.title || file.name.replace(/\.pdf$/i, ''),
+            }))
+        } catch (err) {
+            console.error('PDF extraction failed:', err)
+            alert('Could not read PDF. Please try again or type the passage manually.')
+        } finally {
+            setPdfLoading(false)
+        }
+    }
+
+    const handlePdfDrop = (e) => {
+        e.preventDefault()
+        setPdfDragOver(false)
+        const file = e.dataTransfer.files[0]
+        if (file && file.type === 'application/pdf') extractPdfText(file)
+    }
+
+    const handlePdfFileInput = (e) => {
+        const file = e.target.files[0]
+        if (file) extractPdfText(file)
+    }
+
+    const handleAudioUpload = (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+        const reader = new FileReader()
+        reader.onload = (ev) => {
+            setFormData(p => ({ ...p, audio_data: ev.target.result }))
+        }
+        reader.readAsDataURL(file)
     }
 
     const handleCloseModal = () => {
@@ -111,13 +199,91 @@ export default function QuestionManagement() {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        alert('Question saved! (API integration pending)')
-        handleCloseModal()
+        setSaving(true)
+        setSaveError('')
+        setSaveSuccess(false)
+
+        const basePayload = {
+            module: activeModule,
+            content: formData.content,
+            difficulty: formData.difficulty,
+            options: ['grammar', 'listening', 'reading'].includes(activeModule) ? formData.options : null,
+            correct_answer: ['grammar', 'listening', 'reading'].includes(activeModule) ? formData.correct_answer : null,
+            explanation: formData.explanation || null,
+            audio_data: activeModule === 'listening' ? (formData.audio_data || null) : null,
+        }
+
+        // Extended fields (may not exist in older table schemas)
+        const extendedPayload = {
+            ...basePayload,
+            title: formData.title || null,
+            pdf_name: activeModule === 'reading' ? (formData.pdf_name || null) : null,
+        }
+
+        // Try Supabase (always, even if previously fell back)
+        let savedToSupabase = false
+        let supabaseData = null
+
+        for (const payload of [extendedPayload, basePayload]) {
+            try {
+                if (editingQuestion) {
+                    const { error } = await supabase.from('questions').update(payload).eq('id', editingQuestion.id)
+                    if (error) throw error
+                    setQuestions(prev => prev.map(q => q.id === editingQuestion.id ? { ...q, ...payload } : q))
+                } else {
+                    const { data, error } = await supabase.from('questions').insert(payload).select().single()
+                    if (error) throw error
+                    supabaseData = data
+                    setQuestions(prev => [{ ...data, type: payload.options ? 'mcq' : 'prompt' }, ...prev])
+                }
+                savedToSupabase = true
+                setUsingLocalStorage(false)
+                break   // success — stop retrying
+            } catch (err) {
+                // If first attempt (extended) fails with column error, retry with base
+                const isColumnError = err?.message?.includes('column') || err?.code === '42703' || err?.code === 'PGRST204'
+                if (payload === extendedPayload && isColumnError) continue
+                // For any other error on base payload, stop and fall through to localStorage
+                console.warn('Supabase save failed:', err)
+                break
+            }
+        }
+
+        if (savedToSupabase) {
+            setSaveSuccess(true)
+            setTimeout(() => setSaveSuccess(false), 3000)
+            handleCloseModal()
+        } else {
+            // localStorage fallback
+            const current = getLocalQuestions()
+            if (editingQuestion) {
+                const updated = current.map(q => q.id === editingQuestion.id ? { ...q, ...extendedPayload } : q)
+                saveLocalQuestions(updated)
+                setQuestions(updated)
+            } else {
+                const newQ = { ...extendedPayload, id: Date.now().toString(), created_at: new Date().toISOString(), type: extendedPayload.options ? 'mcq' : 'prompt' }
+                const updated = [newQ, ...current]
+                saveLocalQuestions(updated)
+                setQuestions(updated)
+            }
+            setUsingLocalStorage(true)
+            handleCloseModal()
+        }
+
+        setSaving(false)
     }
 
     const handleDelete = async (questionId) => {
         if (!window.confirm('Are you sure you want to delete this question?')) return
-        alert('Question deleted! (API integration pending)')
+        try {
+            if (!usingLocalStorage) {
+                const { error } = await supabase.from('questions').delete().eq('id', questionId)
+                if (error) throw error
+            }
+        } catch (_) { /* ignore Supabase errors, still remove locally */ }
+        const updated = questions.filter(q => q.id !== questionId)
+        setQuestions(updated)
+        if (usingLocalStorage) saveLocalQuestions(updated)
     }
 
     const filteredQuestions = questions.filter(q =>
@@ -138,6 +304,52 @@ export default function QuestionManagement() {
             backgroundColor: '#F9FAFB',
             minHeight: '100vh',
         }}>
+            {/* Local Storage Mode Banner */}
+            {usingLocalStorage && (
+                <div style={{
+                    marginBottom: '20px',
+                    padding: '12px 16px',
+                    backgroundColor: '#FFFBEB',
+                    border: '1px solid #FCD34D',
+                    borderRadius: '10px',
+                    fontSize: '13px',
+                    color: '#92400E',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                }}>
+                    <span>⚠️</span>
+                    <div>
+                        <strong>Saved locally (browser only).</strong> Questions are not synced to the database yet because the Supabase <code>questions</code> table is missing or doesn't have the required columns.<br />
+                        <strong>Run this SQL in your Supabase SQL Editor to fix:</strong>
+                        <pre style={{ marginTop: '8px', padding: '10px', backgroundColor: '#FEF3C7', borderRadius: '6px', fontSize: '12px', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>{`-- Create questions table (if missing)\nCREATE TABLE IF NOT EXISTS public.questions (\n  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n  module text NOT NULL,\n  title text,\n  content text NOT NULL,\n  difficulty integer DEFAULT 1,\n  options jsonb,\n  correct_answer text,\n  explanation text,\n  audio_data text,\n  pdf_name text,\n  created_at timestamptz DEFAULT now()\n);\n\n-- Or add missing columns to existing table:\nALTER TABLE public.questions\n  ADD COLUMN IF NOT EXISTS title text,\n  ADD COLUMN IF NOT EXISTS pdf_name text;\n\n-- Allow authenticated users\nALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;\nCREATE POLICY IF NOT EXISTS \"allow_all\" ON public.questions FOR ALL USING (true);`}</pre>
+                    </div>
+                </div>
+            )}
+
+            {/* Save success toast (top-right fixed) */}
+            {saveSuccess && (
+                <div style={{
+                    position: 'fixed',
+                    top: '24px',
+                    right: '24px',
+                    zIndex: 9999,
+                    padding: '14px 20px',
+                    backgroundColor: '#22C55E',
+                    color: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 24px rgba(34,197,94,0.4)',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                }}>
+                    <Check size={18} />
+                    Question saved to database!
+                </div>
+            )}
+
             {/* Header */}
             <div style={{
                 display: 'flex',
@@ -447,15 +659,109 @@ export default function QuestionManagement() {
                             </div>
 
                             <form onSubmit={handleSubmit}>
+
+                                {/* Title — Reading & Speaking/Writing prompts */}
+                                {(activeModule === 'reading' || activeModule === 'speaking' || activeModule === 'writing') && (
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                                            Title
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.title}
+                                            onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))}
+                                            placeholder={activeModule === 'reading' ? 'e.g. The Water Cycle' : 'Topic or prompt title'}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 14px',
+                                                borderRadius: '10px',
+                                                border: '2px solid #E5E7EB',
+                                                fontSize: '14px',
+                                                outline: 'none',
+                                                fontFamily: 'inherit',
+                                            }}
+                                        />
+                                    </div>
+                                )}
+
+                                {/* PDF Upload — Reading only */}
+                                {activeModule === 'reading' && (
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                                            Upload Passage PDF <span style={{ fontWeight: '400', color: '#9CA3AF' }}>(optional — extracts text automatically)</span>
+                                        </label>
+                                        {/* Drop Zone */}
+                                        <div
+                                            onDragOver={(e) => { e.preventDefault(); setPdfDragOver(true) }}
+                                            onDragLeave={() => setPdfDragOver(false)}
+                                            onDrop={handlePdfDrop}
+                                            onClick={() => pdfInputRef.current?.click()}
+                                            style={{
+                                                border: `2px dashed ${pdfDragOver ? '#8B5CF6' : '#D1D5DB'}`,
+                                                borderRadius: '12px',
+                                                padding: '24px',
+                                                textAlign: 'center',
+                                                backgroundColor: pdfDragOver ? '#F5F3FF' : '#FAFAFA',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                            }}
+                                        >
+                                            <input
+                                                ref={pdfInputRef}
+                                                type="file"
+                                                accept=".pdf,application/pdf"
+                                                onChange={handlePdfFileInput}
+                                                style={{ display: 'none' }}
+                                            />
+                                            {pdfLoading ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                                                    <div style={{
+                                                        width: '24px', height: '24px',
+                                                        border: '3px solid #E5E7EB',
+                                                        borderTop: '3px solid #8B5CF6',
+                                                        borderRadius: '50%',
+                                                        animation: 'spin 1s linear infinite',
+                                                    }} />
+                                                    <span style={{ fontSize: '14px', color: '#6B7280' }}>Extracting text from PDF...</span>
+                                                </div>
+                                            ) : formData.pdf_name ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                                                    <FileText size={24} style={{ color: '#8B5CF6' }} />
+                                                    <div style={{ textAlign: 'left' }}>
+                                                        <p style={{ fontSize: '14px', fontWeight: '600', color: '#111827', margin: 0 }}>{formData.pdf_name}</p>
+                                                        <p style={{ fontSize: '12px', color: '#22C55E', margin: 0 }}>✓ Text extracted — you may edit below</p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, pdf_name: null })) }}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: '4px' }}
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <FileUp size={32} style={{ color: '#9CA3AF', marginBottom: '8px' }} />
+                                                    <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 4px' }}>
+                                                        <strong>Drag & drop a PDF</strong> or click to browse
+                                                    </p>
+                                                    <p style={{ fontSize: '12px', color: '#9CA3AF', margin: 0 }}>Passage text will be extracted automatically</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div style={{ marginBottom: '20px' }}>
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                                        Question
+                                        {activeModule === 'reading' ? 'Passage Text' : 'Question'}
                                     </label>
                                     <textarea
                                         value={formData.content}
                                         onChange={(e) => setFormData(p => ({ ...p, content: e.target.value }))}
                                         required
-                                        rows={3}
+                                        rows={activeModule === 'reading' ? 6 : 3}
+                                        placeholder={activeModule === 'reading' ? 'Paste or type the reading passage here, or upload a PDF above...' : ''}
                                         style={{
                                             width: '100%',
                                             padding: '12px 14px',
@@ -490,6 +796,53 @@ export default function QuestionManagement() {
                                         <option value={3}>Hard</option>
                                     </select>
                                 </div>
+
+                                {/* Audio Upload — Listening only */}
+                                {activeModule === 'listening' && (
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                                            Audio File
+                                        </label>
+                                        <input
+                                            type="file"
+                                            accept="audio/*"
+                                            onChange={handleAudioUpload}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 14px',
+                                                borderRadius: '10px',
+                                                border: '2px dashed #E5E7EB',
+                                                fontSize: '14px',
+                                                backgroundColor: '#F9FAFB',
+                                                cursor: 'pointer',
+                                            }}
+                                        />
+                                        {formData.audio_data && (
+                                            <div style={{ marginTop: '10px' }}>
+                                                <audio
+                                                    controls
+                                                    src={formData.audio_data}
+                                                    style={{ width: '100%', borderRadius: '8px' }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(p => ({ ...p, audio_data: null }))}
+                                                    style={{
+                                                        marginTop: '6px',
+                                                        fontSize: '12px',
+                                                        color: '#EF4444',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        padding: 0,
+                                                    }}
+                                                >
+                                                    ✕ Remove audio
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {['grammar', 'listening', 'reading'].includes(activeModule) && (
                                     <>
@@ -578,10 +931,25 @@ export default function QuestionManagement() {
                                     />
                                 </div>
 
+                                {saveError && (
+                                    <div style={{
+                                        marginBottom: '16px',
+                                        padding: '12px 16px',
+                                        backgroundColor: '#FEF2F2',
+                                        border: '1px solid #FECACA',
+                                        borderRadius: '10px',
+                                        fontSize: '13px',
+                                        color: '#DC2626',
+                                    }}>
+                                        ⚠️ {saveError}
+                                    </div>
+                                )}
+
                                 <div style={{ display: 'flex', gap: '12px' }}>
                                     <button
                                         type="button"
                                         onClick={handleCloseModal}
+                                        disabled={saving}
                                         style={{
                                             flex: 1,
                                             padding: '12px',
@@ -591,23 +959,25 @@ export default function QuestionManagement() {
                                             color: '#374151',
                                             fontSize: '14px',
                                             fontWeight: '500',
-                                            cursor: 'pointer',
+                                            cursor: saving ? 'not-allowed' : 'pointer',
+                                            opacity: saving ? 0.6 : 1,
                                         }}
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
+                                        disabled={saving}
                                         style={{
                                             flex: 1,
                                             padding: '12px',
                                             borderRadius: '10px',
                                             border: 'none',
-                                            background: `linear-gradient(135deg, ${moduleColors[activeModule]} 0%, ${moduleColors[activeModule]}99 100%)`,
+                                            background: saving ? '#9CA3AF' : `linear-gradient(135deg, ${moduleColors[activeModule]} 0%, ${moduleColors[activeModule]}99 100%)`,
                                             color: 'white',
                                             fontSize: '14px',
                                             fontWeight: '600',
-                                            cursor: 'pointer',
+                                            cursor: saving ? 'not-allowed' : 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -615,7 +985,7 @@ export default function QuestionManagement() {
                                         }}
                                     >
                                         <Check size={16} />
-                                        {editingQuestion ? 'Update' : 'Create'}
+                                        {saving ? 'Saving...' : editingQuestion ? 'Update' : 'Create'}
                                     </button>
                                 </div>
                             </form>

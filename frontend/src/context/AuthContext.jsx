@@ -1,77 +1,75 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import api from '../services/api'
+import { supabase } from '../utils/supabaseClient'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
-    const [token, setToken] = useState(localStorage.getItem('token'))
 
     useEffect(() => {
-        if (token) {
-            fetchUser()
-        } else {
+        // Get initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+                setUser(mapUser(session.user))
+            }
             setLoading(false)
-        }
-    }, [token])
+        })
 
-    const fetchUser = async () => {
-        try {
-            const response = await api.get('/auth/me')
-            setUser(response.data.user)
-        } catch (error) {
-            localStorage.removeItem('token')
-            setToken(null)
-        } finally {
-            setLoading(false)
-        }
-    }
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session?.user) {
+                setUser(mapUser(session.user))
+            } else {
+                setUser(null)
+            }
+        })
+
+        return () => subscription.unsubscribe()
+    }, [])
+
+    const mapUser = (supabaseUser) => ({
+        id: supabaseUser.id,
+        email: supabaseUser.email,
+        full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0],
+        role: { name: supabaseUser.user_metadata?.role || 'student' },
+        ...supabaseUser.user_metadata
+    })
 
     const login = async (email, password) => {
-        const response = await api.post('/auth/login', { email, password })
-        const { access_token, user: userData } = response.data
-
-        localStorage.setItem('token', access_token)
-        setToken(access_token)
-        setUser(userData)
-
-        return userData
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw { response: { data: { error: error.message } } }
+        return mapUser(data.user)
     }
 
     const register = async (email, password, fullName, role = 'student') => {
-        const response = await api.post('/auth/register', {
+        const { data, error } = await supabase.auth.signUp({
             email,
             password,
-            full_name: fullName,
-            role
+            options: {
+                data: { full_name: fullName, role }
+            }
         })
-        const { access_token, user: userData } = response.data
-
-        localStorage.setItem('token', access_token)
-        setToken(access_token)
-        setUser(userData)
-
-        return userData
+        if (error) throw { response: { data: { error: error.message } } }
+        return mapUser(data.user)
     }
 
-    const logout = () => {
-        localStorage.removeItem('token')
-        setToken(null)
+    const logout = async () => {
+        await supabase.auth.signOut()
         setUser(null)
     }
 
     const value = {
         user,
-        token,
         loading,
         login,
         register,
         logout,
+        token: null,
         isAuthenticated: !!user,
-        isAdmin: user?.role?.name === 'admin',
+        isAdmin: user?.role?.name === 'admin' || user?.email === 'admin@neuralingua.com',
         isTeacher: user?.role?.name === 'teacher',
-        isStudent: user?.role?.name === 'student'
+        isStudent: !!(user && user?.role?.name !== 'admin' && user?.email !== 'admin@neuralingua.com')
     }
 
     return (

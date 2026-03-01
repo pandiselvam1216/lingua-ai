@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckSquare, Star, ChevronRight, Award, RefreshCw, Check, X } from 'lucide-react'
-import api from '../../services/api'
+import { getModuleQuestions } from '../../services/questionService'
 
 export default function Grammar() {
     const [questions, setQuestions] = useState([])
@@ -19,8 +19,8 @@ export default function Grammar() {
 
     const fetchQuestions = async () => {
         try {
-            const response = await api.get('/grammar/questions')
-            setQuestions(response.data.questions || [])
+            const questions = await getModuleQuestions('grammar')
+            setQuestions(questions)
         } catch (error) {
             console.error('Failed to fetch questions:', error)
         } finally {
@@ -47,15 +47,7 @@ export default function Grammar() {
             total: prev.total + 1
         }))
 
-        try {
-            await api.post('/grammar/submit', {
-                question_id: currentQuestion.id,
-                answer: selectedAnswer,
-                is_correct: correct
-            })
-        } catch (error) {
-            console.error('Failed to submit answer:', error)
-        }
+        // Score tracked locally — no backend submission needed
     }
 
     const handleNext = () => {
@@ -122,7 +114,7 @@ export default function Grammar() {
     const scorePercent = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0
 
     return (
-        <div style={{
+        <div className="page-container" style={{
             padding: '24px',
             backgroundColor: '#F9FAFB',
             minHeight: '100vh',
@@ -133,6 +125,8 @@ export default function Grammar() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 marginBottom: '24px',
+                flexWrap: 'wrap',
+                gap: '12px',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{

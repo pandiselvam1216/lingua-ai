@@ -5,17 +5,15 @@ import { useAuth } from '../../context/AuthContext'
 export default function Navbar({ onMenuClick }) {
     const { user } = useAuth()
     const [isOnline, setIsOnline] = useState(navigator.onLine)
-    const [micStatus, setMicStatus] = useState('unknown') // 'granted', 'denied', 'prompt', 'unknown'
-    const [audioStatus, setAudioStatus] = useState(false) // true if AudioContext user interaction happened
+    const [micStatus, setMicStatus] = useState('unknown')
+    const [audioStatus, setAudioStatus] = useState(false)
 
     useEffect(() => {
-        // 1. Network Status
         const handleOnline = () => setIsOnline(true)
         const handleOffline = () => setIsOnline(false)
         window.addEventListener('online', handleOnline)
         window.addEventListener('offline', handleOffline)
 
-        // 2. Microphone Permission Status
         const checkMicPermission = async () => {
             try {
                 if (navigator.permissions && navigator.permissions.query) {
@@ -31,26 +29,19 @@ export default function Navbar({ onMenuClick }) {
         }
         checkMicPermission()
 
-        // 3. Audio Status (Simple check if AudioContext is allowed to run)
         const checkAudio = () => {
             const AudioContext = window.AudioContext || window.webkitAudioContext
             if (AudioContext) {
                 const ctx = new AudioContext()
-                if (ctx.state === 'running') {
-                    setAudioStatus(true)
-                } else if (ctx.state === 'suspended') {
-                    // Browsers suspend audio until user interaction
-                    setAudioStatus(false)
-                }
+                if (ctx.state === 'running') setAudioStatus(true)
+                else if (ctx.state === 'suspended') setAudioStatus(false)
                 ctx.close()
             }
         }
         checkAudio()
 
-        // Listen for interactions to update audio status
         const handleInteraction = () => {
             setAudioStatus(true)
-            // Once we have an interaction, we assume audio is "ready" for the session
             window.removeEventListener('click', handleInteraction)
             window.removeEventListener('keydown', handleInteraction)
         }
@@ -76,9 +67,7 @@ export default function Navbar({ onMenuClick }) {
                 height: '32px',
                 borderRadius: '8px',
                 backgroundColor: isOff ? '#FEE2E2' : '#EFF6FF',
-                color: isOff ? '#EF4444' : '#1A73E8', // Red for off, Blue for on
-                // If it's a "good" state like online, maybe Green? Let's use specific logic.
-                // Resetting color logic below for flexibility
+                color: isOff ? '#EF4444' : '#1A73E8',
                 ...((!isOff && color) ? { color: color, backgroundColor: `${color}20` } : {})
             }}
         >
@@ -89,7 +78,7 @@ export default function Navbar({ onMenuClick }) {
     return (
         <header style={{
             height: '72px',
-            padding: '0 24px',
+            padding: '0 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -98,8 +87,11 @@ export default function Navbar({ onMenuClick }) {
             position: 'sticky',
             top: 0,
             zIndex: 40,
+            gap: '12px',
         }}>
+            {/* Hamburger - always visible, CSS shows it on mobile */}
             <button
+                className="navbar-menu-btn"
                 onClick={onMenuClick}
                 style={{
                     padding: '10px',
@@ -108,14 +100,16 @@ export default function Navbar({ onMenuClick }) {
                     backgroundColor: 'transparent',
                     cursor: 'pointer',
                     color: '#6B7280',
-                    display: 'none', // Hidden on desktop usually
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexShrink: 0,
                 }}
             >
                 <Menu size={20} />
             </button>
 
-            {/* Search */}
-            <div style={{ flex: 1, maxWidth: '400px' }}>
+            {/* Search - hidden on mobile via CSS */}
+            <div className="navbar-search" style={{ flex: 1, maxWidth: '400px' }}>
                 <div style={{ position: 'relative' }}>
                     <Search size={18} style={{
                         position: 'absolute',
@@ -140,39 +134,32 @@ export default function Navbar({ onMenuClick }) {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
 
-                {/* System Status Indicators */}
-                <div style={{ display: 'flex', gap: '8px', marginRight: '8px', borderRight: '1px solid #E5E7EB', paddingRight: '16px' }}>
-                    {/* Network */}
+                {/* Status Indicators - hidden on mobile via CSS */}
+                <div
+                    className="navbar-status-indicators"
+                    style={{ display: 'flex', gap: '8px', borderRight: '1px solid #E5E7EB', paddingRight: '12px' }}
+                >
                     <StatusIndicator
-                        icon={Wifi}
-                        offIcon={WifiOff}
-                        isOff={!isOnline}
-                        color={isOnline ? '#10B981' : undefined} // Green if online
+                        icon={Wifi} offIcon={WifiOff}
+                        isOff={!isOnline} color={isOnline ? '#10B981' : undefined}
                         tooltip={isOnline ? "Network: Online" : "Network: Offline"}
                     />
-
-                    {/* Audio */}
                     <StatusIndicator
-                        icon={Volume2}
-                        offIcon={VolumeX}
-                        isOff={!audioStatus}
-                        color={audioStatus ? '#10B981' : undefined}
+                        icon={Volume2} offIcon={VolumeX}
+                        isOff={!audioStatus} color={audioStatus ? '#10B981' : undefined}
                         tooltip={audioStatus ? "Audio: Ready" : "Audio: Click to Enable"}
                     />
-
-                    {/* Mic */}
                     <StatusIndicator
-                        icon={Mic}
-                        offIcon={MicOff}
-                        isOff={micStatus !== 'granted'}
-                        color={micStatus === 'granted' ? '#10B981' : undefined}
+                        icon={Mic} offIcon={MicOff}
+                        isOff={micStatus !== 'granted'} color={micStatus === 'granted' ? '#10B981' : undefined}
                         tooltip={`Microphone: ${micStatus === 'granted' ? 'Access Granted' : 'Check Permissions'}`}
                     />
                 </div>
 
-                <button style={{
+                {/* Bell */}
+                <button className="navbar-bell" style={{
                     padding: '10px',
                     borderRadius: '10px',
                     border: 'none',
@@ -180,6 +167,7 @@ export default function Navbar({ onMenuClick }) {
                     cursor: 'pointer',
                     color: '#6B7280',
                     position: 'relative',
+                    display: 'flex',
                 }}>
                     <Bell size={20} />
                     <span style={{
@@ -193,14 +181,11 @@ export default function Navbar({ onMenuClick }) {
                     }} />
                 </button>
 
-                <div style={{
-                    paddingLeft: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                }}>
-                    <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                {/* User */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {/* Name/role - hidden on mobile */}
+                    <div className="navbar-user-text" style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', whiteSpace: 'nowrap' }}>
                             {user?.full_name || 'User'}
                         </p>
                         <p style={{ fontSize: '12px', color: '#6B7280' }}>
@@ -210,6 +195,7 @@ export default function Navbar({ onMenuClick }) {
                     <div style={{
                         width: '40px',
                         height: '40px',
+                        flexShrink: 0,
                         borderRadius: '10px',
                         background: 'linear-gradient(135deg, #1A73E8 0%, #4285F4 100%)',
                         display: 'flex',

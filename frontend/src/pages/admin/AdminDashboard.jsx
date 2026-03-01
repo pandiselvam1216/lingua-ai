@@ -67,7 +67,7 @@ export default function AdminDashboard() {
     ]
 
     return (
-        <div style={{
+        <div className="page-container" style={{
             padding: '24px',
             backgroundColor: '#F9FAFB',
             minHeight: '100vh',
@@ -83,12 +83,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Stats Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '20px',
-                marginBottom: '32px',
-            }}>
+            <div className="grid-4col" style={{ marginBottom: '32px' }}>
                 {stats.map((stat, idx) => (
                     <motion.div
                         key={stat.label}
@@ -141,7 +136,7 @@ export default function AdminDashboard() {
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+            <div className="grid-chart">
                 {/* Activity Chart Placeholder */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

@@ -4,6 +4,8 @@
  * and persisting data to localStorage.
  */
 
+import { insertScore } from '../services/supabaseService'
+
 const STORAGE_KEY = 'neuraLingua_userState';
 const LT_API_URL = 'https://api.languagetool.org/v2/check';
 
@@ -16,7 +18,7 @@ export const getLocalState = () => {
     } catch (e) {
         console.error("Failed to parse local state", e);
     }
-    
+
     // Default initial state
     return {
         userProfile: { name: "Student", joined: new Date().toISOString() },
@@ -43,7 +45,7 @@ export const saveLocalState = (state) => {
 
 const updateMetrics = (type, score, timeSpent) => {
     const state = getLocalState();
-    
+
     // Update generic metrics
     state.metrics.timeSpentMinutes += Math.ceil(timeSpent / 60);
     // Simple mock logic for modules completed - just increment
@@ -65,12 +67,12 @@ const updateMetrics = (type, score, timeSpent) => {
     // Recalculate Overall Score (Weighted Average)
     const speakingAvg = state.speakingHistory.reduce((acc, curr) => acc + curr.score, 0) / (state.speakingHistory.length || 1);
     const writingAvg = state.writingHistory.reduce((acc, curr) => acc + curr.score, 0) / (state.writingHistory.length || 1);
-    
+
     // Simple average for now
     let divider = 0;
     if (state.speakingHistory.length > 0) divider++;
     if (state.writingHistory.length > 0) divider++;
-    
+
     state.metrics.overallScore = Math.round((speakingAvg + writingAvg) / (divider || 1));
 
     // Update Chart Data (Daily)
@@ -84,6 +86,13 @@ const updateMetrics = (type, score, timeSpent) => {
     }
 
     saveLocalState(state);
+
+    // Sync to Supabase asynchronously using centralized service
+    insertScore(type, score, {
+        timeSpent: timeSpent,
+        date: entry.date
+    });
+
     return state;
 };
 
@@ -153,15 +162,15 @@ export const evaluateWriting = async (text, timeElapsed) => {
         // 1. Calculate Score
         const wordCount = text.trim().split(/\s+/).length;
         const errorCount = matches.length;
-        
+
         // Simple penalty: 5 points per error, min score 0
         let score = Math.max(0, 100 - (errorCount * 5));
-        
+
         // Length bonus/penalty
         if (wordCount < 20) score -= 20; // Too short penalty
 
         // 2. Generate Suggestions
-        const suggestions = matches.slice(0, 3).map(m => 
+        const suggestions = matches.slice(0, 3).map(m =>
             `Current: "${text.substring(m.offset, m.offset + m.length)}". Suggestion: ${m.replacements.map(r => r.value).slice(0, 2).join(", ")}`
         );
         if (suggestions.length === 0) suggestions.push("Great job! No major errors found.");

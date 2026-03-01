@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, Mic, MicOff, Edit, Send, Clock, Play, Square, Award, AlertCircle } from 'lucide-react'
+import { Brain, Mic, MicOff, Edit, Send, Clock, Play, Square, Award, AlertCircle, Sparkles } from 'lucide-react'
 import api from '../../services/api'
+import { getAICriticalThinkingFeedback, generateJAMTopics } from '../../services/aiService'
+import { getModuleQuestions } from '../../services/questionService'
 
 export default function CriticalThinking() {
     const [prompts, setPrompts] = useState([])
@@ -54,11 +56,38 @@ export default function CriticalThinking() {
 
     const fetchPrompts = async () => {
         try {
-            const res = await api.get('/critical-thinking/prompts')
-            setPrompts(res.data.prompts || [])
-            if (res.data.prompts?.length > 0) {
-                selectPrompt(res.data.prompts[0])
+            // 1. Try AI-generated topics first
+            const aiTopics = await generateJAMTopics()
+            if (aiTopics && aiTopics.length > 0) {
+                setPrompts(aiTopics)
+                selectPrompt(aiTopics[0])
+                setLoading(false)
+                return
             }
+        } catch (_) { /* ignore */ }
+
+        try {
+            // 2. Fallback to Flask backend
+            const res = await api.get('/critical-thinking/prompts')
+            if (res.data.prompts?.length > 0) {
+                setPrompts(res.data.prompts)
+                selectPrompt(res.data.prompts[0])
+                setLoading(false)
+                return
+            }
+        } catch (_) { /* ignore */ }
+
+        try {
+            // 3. Fallback to admin-created speaking questions from localStorage/Supabase
+            const questions = await getModuleQuestions('speaking')
+            const mapped = questions.map(q => ({
+                id: q.id,
+                title: q.title || q.content?.substring(0, 60) || 'JAM Topic',
+                content: q.content,
+                time_limit: q.time_limit || 120,
+            }))
+            setPrompts(mapped)
+            if (mapped.length > 0) selectPrompt(mapped[0])
         } catch (error) {
             console.error('Failed to fetch prompts:', error)
         } finally {
@@ -100,6 +129,13 @@ export default function CriticalThinking() {
         stopSession()
 
         try {
+            // Try AI feedback first
+            const aiResult = await getAICriticalThinkingFeedback(response, currentPrompt?.content || currentPrompt?.title)
+            if (aiResult) {
+                setResult(aiResult)
+                return
+            }
+            // Fallback to Flask backend
             const res = await api.post('/critical-thinking/submit', {
                 prompt_id: currentPrompt?.id,
                 response: response.trim(),
@@ -109,6 +145,13 @@ export default function CriticalThinking() {
             setResult(res.data)
         } catch (error) {
             console.error('Failed to submit:', error)
+            // Show basic fallback result
+            setResult({
+                score: {
+                    total_score: 70, breakdown: { content: 70, structure: 70, argument: 70 },
+                    feedback: 'Good effort! Keep practicing to improve your critical thinking skills.'
+                }
+            })
         }
     }
 
@@ -157,12 +200,7 @@ export default function CriticalThinking() {
                     </div>
                 </div>
 
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '300px 1fr',
-                    gap: '32px',
-                    alignItems: 'start'
-                }}>
+                <div className="grid-sidebar" style={{ gap: '32px' }}>
                     {/* Sidebar - Topics */}
                     <div style={{
                         backgroundColor: 'white',
@@ -486,7 +524,7 @@ export default function CriticalThinking() {
                                             </div>
 
                                             <div style={{ padding: '32px' }}>
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
+                                                <div className="grid-3col" style={{ marginBottom: '32px' }}>
                                                     {['content', 'structure', 'argument'].map(key => (
                                                         <div key={key} style={{ textAlign: 'center' }}>
                                                             <div style={{

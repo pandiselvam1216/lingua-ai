@@ -25,24 +25,25 @@ const adminItems = [
     { path: '/admin/reports', icon: BarChart2, label: 'Reports' },
 ]
 
-export default function Sidebar({ isOpen, onToggle }) {
+export default function Sidebar({ isOpen, onToggle, isMobile }) {
     const { logout, user, isAdmin } = useAuth()
 
     return (
         <motion.aside
             initial={false}
-            animate={{ width: isOpen ? 260 : 72 }}
+            animate={{ width: isOpen ? 260 : (isMobile ? 0 : 72) }}
             style={{
                 position: 'fixed',
                 left: 0,
                 top: 0,
                 height: '100vh',
                 backgroundColor: '#FFFFFF',
-                borderRight: '1px solid #E5E7EB',
+                borderRight: isOpen ? '1px solid #E5E7EB' : 'none',
                 zIndex: 50,
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: '2px 0 8px rgba(0,0,0,0.04)',
+                boxShadow: isOpen ? '2px 0 8px rgba(0,0,0,0.04)' : 'none',
+                overflow: 'hidden',
             }}
         >
             {/* Logo */}
@@ -53,12 +54,14 @@ export default function Sidebar({ isOpen, onToggle }) {
                 justifyContent: 'space-between',
                 padding: '0 16px',
                 borderBottom: '1px solid #F3F4F6',
+                minWidth: 0,
             }}>
                 {isOpen ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
                         <div style={{
                             width: '40px',
                             height: '40px',
+                            flexShrink: 0,
                             borderRadius: '10px',
                             background: 'linear-gradient(135deg, #1A73E8 0%, #4285F4 100%)',
                             display: 'flex',
@@ -67,7 +70,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                         }}>
                             <span style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>N</span>
                         </div>
-                        <span style={{ fontWeight: '600', fontSize: '18px', color: '#111827' }}>NeuraLingua</span>
+                        <span style={{ fontWeight: '600', fontSize: '18px', color: '#111827', whiteSpace: 'nowrap' }}>NeuraLingua</span>
                     </div>
                 ) : (
                     <div style={{
@@ -93,6 +96,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                             backgroundColor: 'transparent',
                             cursor: 'pointer',
                             color: '#6B7280',
+                            flexShrink: 0,
                         }}
                     >
                         <ChevronLeft size={18} />
@@ -101,8 +105,8 @@ export default function Sidebar({ isOpen, onToggle }) {
             </div>
 
             {/* Nav */}
-            <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
-                {!isOpen && (
+            <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto', minWidth: 0 }}>
+                {!isOpen && !isMobile && (
                     <button
                         onClick={onToggle}
                         style={{
@@ -126,6 +130,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                     <NavLink
                         key={item.path}
                         to={item.path}
+                        onClick={isMobile ? onToggle : undefined}
                         style={({ isActive }) => ({
                             display: 'flex',
                             alignItems: 'center',
@@ -139,9 +144,10 @@ export default function Sidebar({ isOpen, onToggle }) {
                             color: isActive ? '#1A73E8' : '#6B7280',
                             fontWeight: isActive ? '500' : '400',
                             transition: 'all 0.15s ease',
+                            whiteSpace: 'nowrap',
                         })}
                     >
-                        <item.icon size={20} />
+                        <item.icon size={20} style={{ flexShrink: 0 }} />
                         {isOpen && <span style={{ fontSize: '14px' }}>{item.label}</span>}
                     </NavLink>
                 ))}
@@ -168,7 +174,8 @@ export default function Sidebar({ isOpen, onToggle }) {
                             <NavLink
                                 key={item.path}
                                 to={item.path}
-                                end={item.path === '/admin'} // Exact match for admin root
+                                end={item.path === '/admin'}
+                                onClick={isMobile ? onToggle : undefined}
                                 style={({ isActive }) => ({
                                     display: 'flex',
                                     alignItems: 'center',
@@ -182,9 +189,10 @@ export default function Sidebar({ isOpen, onToggle }) {
                                     color: isActive ? '#166534' : '#6B7280',
                                     fontWeight: isActive ? '500' : '400',
                                     transition: 'all 0.15s ease',
+                                    whiteSpace: 'nowrap',
                                 })}
                             >
-                                <item.icon size={20} />
+                                <item.icon size={20} style={{ flexShrink: 0 }} />
                                 {isOpen && <span style={{ fontSize: '14px' }}>{item.label}</span>}
                             </NavLink>
                         ))}
@@ -193,13 +201,14 @@ export default function Sidebar({ isOpen, onToggle }) {
             </nav>
 
             {/* User */}
-            <div style={{ padding: '16px 12px', borderTop: '1px solid #F3F4F6' }}>
+            <div style={{ padding: '16px 12px', borderTop: '1px solid #F3F4F6', minWidth: 0 }}>
                 {isOpen && user && (
                     <div style={{
                         padding: '12px 16px',
                         marginBottom: '12px',
                         backgroundColor: '#F9FAFB',
                         borderRadius: '10px',
+                        minWidth: 0,
                     }}>
                         <p style={{
                             fontSize: '14px',
@@ -237,9 +246,10 @@ export default function Sidebar({ isOpen, onToggle }) {
                         color: '#6B7280',
                         justifyContent: isOpen ? 'flex-start' : 'center',
                         transition: 'all 0.15s ease',
+                        whiteSpace: 'nowrap',
                     }}
                 >
-                    <LogOut size={20} />
+                    <LogOut size={20} style={{ flexShrink: 0 }} />
                     {isOpen && <span style={{ fontSize: '14px', fontWeight: '500' }}>Sign out</span>}
                 </button>
             </div>

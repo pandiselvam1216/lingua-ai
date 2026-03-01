@@ -20,13 +20,11 @@ api.interceptors.request.use(
 )
 
 // Response interceptor for error handling
+// NOTE: Do NOT redirect to /login on 401 — auth is handled by Supabase.
+// A 401 from the Flask backend (e.g. missing JWT) should not log the user out.
 api.interceptors.response.use(
     response => response,
     error => {
-        if (error.response?.status === 401) {
-            localStorage.removeItem('token')
-            window.location.href = '/login'
-        }
         return Promise.reject(error)
     }
 )

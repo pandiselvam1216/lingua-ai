@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, Clock, Send, RotateCcw, CheckCircle, AlertCircle, Volume2 } from 'lucide-react'
-import api from '../../services/api'
 import { evaluateSpeaking } from '../../utils/localScoring'
+import { getModuleQuestions } from '../../services/questionService'
 
 export default function Speaking() {
     const [prompts, setPrompts] = useState([])
@@ -26,11 +26,17 @@ export default function Speaking() {
 
     const fetchPrompts = async () => {
         try {
-            const response = await api.get('/speaking/prompts')
-            setPrompts(response.data.prompts || [])
-            if (response.data.prompts?.length > 0) {
-                setSelectedPrompt(response.data.prompts[0])
-                setTimeLeft(response.data.prompts[0].time_limit || 60)
+            const questions = await getModuleQuestions('speaking')
+            const mapped = questions.map(q => ({
+                id: q.id,
+                title: q.title || q.content?.substring(0, 60) || 'Speaking Topic',
+                content: q.content,
+                time_limit: q.time_limit || 60,
+            }))
+            setPrompts(mapped)
+            if (mapped.length > 0) {
+                setSelectedPrompt(mapped[0])
+                setTimeLeft(mapped[0].time_limit || 60)
             }
         } catch (error) {
             console.error('Failed to fetch prompts:', error)
@@ -157,7 +163,7 @@ export default function Speaking() {
     }
 
     return (
-        <div style={{
+        <div className="page-container" style={{
             padding: '24px',
             backgroundColor: '#F9FAFB',
             minHeight: '100vh',
@@ -190,7 +196,7 @@ export default function Speaking() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '24px' }}>
+            <div className="grid-sidebar">
                 {/* Topics Sidebar */}
                 <div style={{
                     backgroundColor: 'white',
@@ -535,7 +541,7 @@ export default function Speaking() {
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div className="grid-2col">
                                     {Object.entries(feedback.feedback || {}).map(([key, value]) => (
                                         <div
                                             key={key}

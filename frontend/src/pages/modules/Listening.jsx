@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Headphones, Play, Pause, Volume2, VolumeX, Check, X, ChevronRight, Award } from 'lucide-react'
-import api from '../../services/api'
+import { getModuleQuestions } from '../../services/questionService'
 
 export default function Listening() {
     const [questions, setQuestions] = useState([])
@@ -13,23 +13,32 @@ export default function Listening() {
     const [loading, setLoading] = useState(true)
     const [isPlaying, setIsPlaying] = useState(false)
     const [progress, setProgress] = useState(0)
-    const [duration, setDuration] = useState(90)
+    const [duration, setDuration] = useState(0)
     const [currentTime, setCurrentTime] = useState(0)
     const [isMuted, setIsMuted] = useState(false)
     const audioRef = useRef(null)
-    const progressInterval = useRef(null)
 
     useEffect(() => {
         fetchQuestions()
-        return () => {
-            if (progressInterval.current) clearInterval(progressInterval.current)
-        }
     }, [])
+
+    // Sync mute state with audio element
+    useEffect(() => {
+        if (audioRef.current) audioRef.current.muted = isMuted
+    }, [isMuted])
+
+    // When question changes, reset audio
+    useEffect(() => {
+        setIsPlaying(false)
+        setProgress(0)
+        setCurrentTime(0)
+        setDuration(0)
+    }, [currentIndex])
 
     const fetchQuestions = async () => {
         try {
-            const response = await api.get('/listening/questions')
-            setQuestions(response.data.questions || [])
+            const questions = await getModuleQuestions('listening')
+            setQuestions(questions)
         } catch (error) {
             console.error('Failed to fetch questions:', error)
         } finally {
@@ -40,23 +49,32 @@ export default function Listening() {
     const currentQuestion = questions[currentIndex]
 
     const handlePlayPause = () => {
-        setIsPlaying(!isPlaying)
-        if (!isPlaying) {
-            // Simulate audio playback
-            progressInterval.current = setInterval(() => {
-                setCurrentTime(prev => {
-                    if (prev >= duration) {
-                        setIsPlaying(false)
-                        clearInterval(progressInterval.current)
-                        return duration
-                    }
-                    setProgress(((prev + 1) / duration) * 100)
-                    return prev + 1
-                })
-            }, 1000)
+        const audio = audioRef.current
+        if (!audio) return
+        if (isPlaying) {
+            audio.pause()
         } else {
-            if (progressInterval.current) clearInterval(progressInterval.current)
+            audio.play()
         }
+        setIsPlaying(!isPlaying)
+    }
+
+    const handleAudioTimeUpdate = () => {
+        const audio = audioRef.current
+        if (!audio) return
+        setCurrentTime(audio.currentTime)
+        setProgress(audio.duration ? (audio.currentTime / audio.duration) * 100 : 0)
+    }
+
+    const handleAudioLoaded = () => {
+        const audio = audioRef.current
+        if (!audio) return
+        setDuration(audio.duration)
+    }
+
+    const handleAudioEnded = () => {
+        setIsPlaying(false)
+        setProgress(100)
     }
 
     const handleSelectAnswer = (value) => {
@@ -75,15 +93,7 @@ export default function Listening() {
             total: prev.total + 1
         }))
 
-        try {
-            await api.post('/listening/submit', {
-                question_id: currentQuestion.id,
-                answer: selectedAnswer,
-                is_correct: correct
-            })
-        } catch (error) {
-            console.error('Failed to submit:', error)
-        }
+        // Score tracked locally — no backend submission needed
     }
 
     const handleNext = () => {
@@ -94,7 +104,10 @@ export default function Listening() {
             setProgress(0)
             setCurrentTime(0)
             setIsPlaying(false)
-            if (progressInterval.current) clearInterval(progressInterval.current)
+            if (audioRef.current) {
+                audioRef.current.pause()
+                audioRef.current.currentTime = 0
+            }
         }
     }
 
@@ -146,7 +159,7 @@ export default function Listening() {
     const questionProgress = ((currentIndex + 1) / questions.length) * 100
 
     return (
-        <div style={{
+        <div className="page-container" style={{
             padding: '24px',
             backgroundColor: '#F9FAFB',
             minHeight: '100vh',
@@ -157,6 +170,8 @@ export default function Listening() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 marginBottom: '24px',
+                flexWrap: 'wrap',
+                gap: '12px',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{
@@ -254,6 +269,23 @@ export default function Listening() {
                     background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)',
                     padding: '32px',
                 }}>
+                    {/* Hidden real audio element */}
+                    {currentQuestion.audio_data && (
+                        <audio
+                            ref={audioRef}
+                            src={currentQuestion.audio_data}
+                            onTimeUpdate={handleAudioTimeUpdate}
+                            onLoadedMetadata={handleAudioLoaded}
+                            onEnded={handleAudioEnded}
+                            muted={isMuted}
+                        />
+                    )}
+
+                    {/* Track label */}
+                    <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.8)', fontSize: '13px', marginBottom: '16px', margin: '0 0 16px' }}>
+                        {currentQuestion.audio_data ? '🎵 ' + (currentQuestion.title || 'Listening Exercise') : '📝 Read the passage below carefully'}
+                    </p>
+
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -263,17 +295,19 @@ export default function Listening() {
                     }}>
                         <button
                             onClick={() => setIsMuted(!isMuted)}
+                            disabled={!currentQuestion.audio_data}
                             style={{
                                 width: '48px',
                                 height: '48px',
                                 borderRadius: '50%',
                                 border: 'none',
                                 backgroundColor: 'rgba(255,255,255,0.2)',
-                                cursor: 'pointer',
+                                cursor: currentQuestion.audio_data ? 'pointer' : 'default',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: 'white',
+                                opacity: currentQuestion.audio_data ? 1 : 0.4,
                             }}
                         >
                             {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -281,19 +315,21 @@ export default function Listening() {
 
                         <motion.button
                             onClick={handlePlayPause}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                            disabled={!currentQuestion.audio_data}
+                            whileHover={currentQuestion.audio_data ? { scale: 1.05 } : {}}
+                            whileTap={currentQuestion.audio_data ? { scale: 0.95 } : {}}
                             style={{
                                 width: '72px',
                                 height: '72px',
                                 borderRadius: '50%',
                                 border: 'none',
                                 backgroundColor: 'white',
-                                cursor: 'pointer',
+                                cursor: currentQuestion.audio_data ? 'pointer' : 'default',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                                opacity: currentQuestion.audio_data ? 1 : 0.5,
                             }}
                         >
                             {isPlaying ? (
@@ -332,7 +368,7 @@ export default function Listening() {
                         fontSize: '13px',
                     }}>
                         <span>{formatTime(currentTime)}</span>
-                        <span>{formatTime(duration)}</span>
+                        <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
                     </div>
                 </div>
 

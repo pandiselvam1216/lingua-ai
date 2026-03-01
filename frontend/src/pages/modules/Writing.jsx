@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PenTool, Clock, Send, FileText, CheckCircle, AlertCircle, Sparkles, RotateCcw } from 'lucide-react'
-import api from '../../services/api'
 import { evaluateWriting } from '../../utils/localScoring'
+import { getAIWritingFeedback } from '../../services/aiService'
+import { getModuleQuestions } from '../../services/questionService'
 
 export default function Writing() {
     const [prompts, setPrompts] = useState([])
@@ -28,11 +29,15 @@ export default function Writing() {
 
     const fetchPrompts = async () => {
         try {
-            const response = await api.get('/writing/prompts')
-            setPrompts(response.data.prompts || [])
-            if (response.data.prompts?.length > 0) {
-                setSelectedPrompt(response.data.prompts[0])
-            }
+            const questions = await getModuleQuestions('writing')
+            const mapped = questions.map(q => ({
+                id: q.id,
+                title: q.title || q.content?.substring(0, 60) || 'Writing Prompt',
+                content: q.content,
+                word_limit: q.word_limit || 150,
+            }))
+            setPrompts(mapped)
+            if (mapped.length > 0) setSelectedPrompt(mapped[0])
         } catch (error) {
             console.error('Failed to fetch prompts:', error)
         } finally {
@@ -52,12 +57,20 @@ export default function Writing() {
 
         setSubmitting(true)
         try {
-            // Local Evaluation
+            // Local grammar evaluation
             const result = await evaluateWriting(essay, timeElapsed)
+            // Enhance with AI feedback
+            const aiFeedback = await getAIWritingFeedback(
+                essay,
+                selectedPrompt?.title || 'General Writing',
+                result.suggestions?.length || 0
+            )
+            if (aiFeedback) {
+                result.aiFeedback = aiFeedback
+            }
             setFeedback(result)
         } catch (error) {
             console.error('Failed to submit:', error)
-            setSubmitting(false)
         } finally {
             setSubmitting(false)
         }
@@ -101,7 +114,7 @@ export default function Writing() {
     }
 
     return (
-        <div style={{
+        <div className="page-container" style={{
             padding: '24px',
             backgroundColor: '#F9FAFB',
             minHeight: '100vh',
@@ -112,6 +125,8 @@ export default function Writing() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 marginBottom: '24px',
+                flexWrap: 'wrap',
+                gap: '12px',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{
@@ -157,7 +172,7 @@ export default function Writing() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '24px' }}>
+            <div className="grid-sidebar">
                 {/* Topics Sidebar */}
                 <div style={{
                     backgroundColor: 'white',
@@ -462,12 +477,7 @@ export default function Writing() {
                                 </div>
 
                                 {/* Feedback Categories */}
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: '1fr 1fr',
-                                    gap: '16px',
-                                    marginBottom: '24px',
-                                }}>
+                                <div className="grid-2col" style={{ marginBottom: '24px' }}>
                                     {Object.entries(feedback.feedback || {}).map(([key, value]) => (
                                         <div
                                             key={key}

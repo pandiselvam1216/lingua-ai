@@ -8,6 +8,8 @@ import { useAuth } from '../context/AuthContext'
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
+import { useState, useEffect } from 'react'
+import { fetchDashboardStats } from '../services/supabaseService'
 import { getLocalState } from '../utils/localScoring'
 
 const modules = [
@@ -20,25 +22,59 @@ const modules = [
     { path: '/critical-thinking', icon: Brain, title: 'Critical Thinking', desc: 'JAM sessions', color: '#EC4899', bg: '#FDF2F8' },
 ]
 
-const defaultStats = [
-    { icon: TrendingUp, label: 'Overall Progress', value: '0%', color: '#3B82F6', bg: '#EFF6FF', key: 'overallScore', suffix: '%' },
-    { icon: Award, label: 'Lessons Completed', value: '0', color: '#10B981', bg: '#ECFDF5', key: 'modulesCompleted' },
-    { icon: Target, label: 'Current Streak', value: '1 day', color: '#F59E0B', bg: '#FFFBEB', key: 'streakDays', suffix: ' days' },
-    { icon: Clock, label: 'Time Spent', value: '0m', color: '#8B5CF6', bg: '#F5F3FF', key: 'timeSpentMinutes', suffix: 'm' },
-]
-
 export default function Dashboard() {
     const { user } = useAuth()
-    const localState = getLocalState()
-    const { metrics, chartData } = localState
+    const [stats, setStats] = useState(null)
+    const [chartData, setChartData] = useState([])
+    const [loadingStats, setLoadingStats] = useState(true)
 
-    const stats = defaultStats.map(s => ({
-        ...s,
-        value: (metrics[s.key] || 0) + (s.suffix || '')
-    }))
+    useEffect(() => {
+        loadStats()
+    }, [])
+
+    const loadStats = async () => {
+        try {
+            // Try Supabase first, fall back to local
+            const supabaseStats = await fetchDashboardStats()
+            if (supabaseStats.modulesCompleted > 0) {
+                setStats(supabaseStats)
+                setChartData(supabaseStats.chartData)
+            } else {
+                // Fall back to localStorage
+                const localState = getLocalState()
+                setStats(localState.metrics)
+                setChartData(localState.chartData || [])
+            }
+        } catch (e) {
+            const localState = getLocalState()
+            setStats(localState.metrics)
+            setChartData(localState.chartData || [])
+        } finally {
+            setLoadingStats(false)
+        }
+    }
+
+    const statCards = [
+        {
+            icon: TrendingUp, label: 'Overall Score', color: '#3B82F6', bg: '#EFF6FF',
+            value: stats ? `${stats.overallScore || 0}%` : '—'
+        },
+        {
+            icon: Award, label: 'Lessons Completed', color: '#10B981', bg: '#ECFDF5',
+            value: stats ? `${stats.modulesCompleted || 0}` : '—'
+        },
+        {
+            icon: Target, label: 'Speaking Avg', color: '#F59E0B', bg: '#FFFBEB',
+            value: stats ? `${stats.speakingAvg || stats.streakDays || 0}` : '—'
+        },
+        {
+            icon: Clock, label: 'Writing Avg', color: '#8B5CF6', bg: '#F5F3FF',
+            value: stats ? `${stats.writingAvg || stats.timeSpentMinutes || 0}` : '—'
+        },
+    ]
 
     return (
-        <div style={{ padding: '24px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
+        <div className="page-container" style={{ padding: '24px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
             <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
                 {/* Header */}
                 <motion.div
@@ -59,14 +95,10 @@ export default function Dashboard() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 1fr)',
-                        gap: '20px',
-                        marginBottom: '32px',
-                    }}
+                    className="grid-4col"
+                    style={{ marginBottom: '32px' }}
                 >
-                    {stats.map((stat, i) => (
+                    {statCards.map((stat, i) => (
                         <div
                             key={i}
                             style={{
@@ -91,7 +123,9 @@ export default function Dashboard() {
                                 <stat.icon size={24} style={{ color: stat.color }} />
                             </div>
                             <div>
-                                <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>{stat.value}</div>
+                                <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>
+                                    {loadingStats ? <span style={{ color: '#D1D5DB' }}>—</span> : stat.value}
+                                </div>
                                 <div style={{ fontSize: '13px', color: '#6B7280' }}>{stat.label}</div>
                             </div>
                         </div>
@@ -99,7 +133,7 @@ export default function Dashboard() {
                 </motion.div>
 
                 {/* Chart and Quick Actions */}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '32px' }}>
+                <div className="grid-chart" style={{ marginBottom: '32px' }}>
                     {/* Chart */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -114,29 +148,38 @@ export default function Dashboard() {
                     >
                         <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '20px' }}>
                             Weekly Progress
+                            {!loadingStats && <span style={{ fontSize: '12px', fontWeight: '400', color: '#6B7280', marginLeft: '8px' }}>
+                                (from Supabase)
+                            </span>}
                         </h3>
-                        <ResponsiveContainer width="100%" height={250}>
-                            <LineChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                                <XAxis dataKey="day" stroke="#6B7280" fontSize={12} />
-                                <YAxis stroke="#6B7280" fontSize={12} />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#FFFFFF',
-                                        border: '1px solid #E5E7EB',
-                                        borderRadius: '8px'
-                                    }}
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="score"
-                                    stroke="#1A73E8"
-                                    strokeWidth={3}
-                                    dot={{ fill: '#1A73E8', r: 4 }}
-                                    activeDot={{ r: 6, fill: '#1A73E8' }}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
+                        {chartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={250}>
+                                <LineChart data={chartData}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                                    <XAxis dataKey="day" stroke="#6B7280" fontSize={12} />
+                                    <YAxis stroke="#6B7280" fontSize={12} domain={[0, 100]} />
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: '#FFFFFF',
+                                            border: '1px solid #E5E7EB',
+                                            borderRadius: '8px'
+                                        }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="score"
+                                        stroke="#1A73E8"
+                                        strokeWidth={3}
+                                        dot={{ fill: '#1A73E8', r: 4 }}
+                                        activeDot={{ r: 6, fill: '#1A73E8' }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', fontSize: 14 }}>
+                                Complete a module to see your progress chart!
+                            </div>
+                        )}
                     </motion.div>
 
                     {/* Quick Actions */}
@@ -156,14 +199,9 @@ export default function Dashboard() {
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <Link to="/speaking" style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '16px',
-                                borderRadius: '12px',
-                                backgroundColor: '#ECFDF5',
-                                textDecoration: 'none',
-                                border: '1px solid #D1FAE5',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '16px', borderRadius: '12px', backgroundColor: '#ECFDF5',
+                                textDecoration: 'none', border: '1px solid #D1FAE5',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <Mic size={20} style={{ color: '#10B981' }} />
@@ -172,14 +210,9 @@ export default function Dashboard() {
                                 <ArrowRight size={18} style={{ color: '#10B981' }} />
                             </Link>
                             <Link to="/grammar" style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '16px',
-                                borderRadius: '12px',
-                                backgroundColor: '#FEF2F2',
-                                textDecoration: 'none',
-                                border: '1px solid #FECACA',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '16px', borderRadius: '12px', backgroundColor: '#FEF2F2',
+                                textDecoration: 'none', border: '1px solid #FECACA',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <CheckSquare size={20} style={{ color: '#EF4444' }} />
@@ -188,14 +221,9 @@ export default function Dashboard() {
                                 <ArrowRight size={18} style={{ color: '#EF4444' }} />
                             </Link>
                             <Link to="/vocabulary" style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '16px',
-                                borderRadius: '12px',
-                                backgroundColor: '#EEF2FF',
-                                textDecoration: 'none',
-                                border: '1px solid #C7D2FE',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '16px', borderRadius: '12px', backgroundColor: '#EEF2FF',
+                                textDecoration: 'none', border: '1px solid #C7D2FE',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <Book size={20} style={{ color: '#6366F1' }} />
@@ -216,43 +244,24 @@ export default function Dashboard() {
                     <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '20px' }}>
                         Learning Modules
                     </h3>
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(7, 1fr)',
-                        gap: '16px',
-                    }}>
+                    <div className="grid-7col">
                         {modules.map((mod, i) => (
-                            <Link
-                                key={i}
-                                to={mod.path}
-                                style={{
-                                    backgroundColor: '#FFFFFF',
-                                    borderRadius: '16px',
-                                    padding: '24px 16px',
-                                    border: '1px solid #E5E7EB',
-                                    textAlign: 'center',
-                                    textDecoration: 'none',
-                                    transition: 'all 0.2s ease',
-                                }}
-                            >
+                            <Link key={i} to={mod.path} style={{
+                                backgroundColor: '#FFFFFF', borderRadius: '16px', padding: '24px 16px',
+                                border: '1px solid #E5E7EB', textAlign: 'center', textDecoration: 'none',
+                                transition: 'all 0.2s ease',
+                            }}>
                                 <div style={{
-                                    width: '56px',
-                                    height: '56px',
-                                    borderRadius: '14px',
-                                    backgroundColor: mod.bg,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    margin: '0 auto 16px',
+                                    width: '56px', height: '56px', borderRadius: '14px',
+                                    backgroundColor: mod.bg, display: 'flex', alignItems: 'center',
+                                    justifyContent: 'center', margin: '0 auto 16px',
                                 }}>
                                     <mod.icon size={28} style={{ color: mod.color }} />
                                 </div>
                                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
                                     {mod.title}
                                 </div>
-                                <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
-                                    {mod.desc}
-                                </div>
+                                <div style={{ fontSize: '12px', color: '#9CA3AF' }}>{mod.desc}</div>
                             </Link>
                         ))}
                     </div>

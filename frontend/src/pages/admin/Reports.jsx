@@ -109,7 +109,7 @@ export default function Reports() {
     const totalAttempts = reports.reduce((sum, r) => sum + r.total_attempts, 0)
 
     return (
-        <div style={{
+        <div className="page-container" style={{
             padding: '24px',
             backgroundColor: '#F9FAFB',
             minHeight: '100vh',
@@ -120,6 +120,8 @@ export default function Reports() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 marginBottom: '24px',
+                flexWrap: 'wrap',
+                gap: '12px',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{
@@ -166,12 +168,7 @@ export default function Reports() {
             </div>
 
             {/* Summary Stats */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '20px',
-                marginBottom: '24px',
-            }}>
+            <div className="grid-4col" style={{ marginBottom: '24px' }}>
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -325,11 +322,11 @@ export default function Reports() {
                 </div>
             </div>
 
-            {/* Reports Table */}
+            {/* Reports Table - scrollable on mobile */}
             <div style={{
                 backgroundColor: 'white',
                 borderRadius: '16px',
-                overflow: 'hidden',
+                overflow: 'auto',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
