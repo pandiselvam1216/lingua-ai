@@ -284,7 +284,7 @@ export default function AdminDashboard() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {quickLinks.map((link) => (
                                 <Link
-                                    key={link.path}
+                                            key={link.path}
                                     to={link.path}
                                     style={{
                                         display: 'flex',

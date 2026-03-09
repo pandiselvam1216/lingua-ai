@@ -13,6 +13,7 @@ export default function Login() {
     const navigate = useNavigate()
     const { login } = useAuth()
 
+    
     const handleSubmit = async (e) => {
         e.preventDefault()
         setError('')
@@ -193,9 +194,9 @@ export default function Login() {
                     {/* Register Link */}
                     <p style={{ textAlign: 'center', marginTop: '28px', fontSize: '14px', color: '#6B7280' }}>
                         Don't have an account?{' '}
-                        <Link to="/register" style={{ color: '#1A73E8', textDecoration: 'none', fontWeight: '500' }}>
-                            Sign up
-                        </Link>
+                        <a href="https://mail.google.com/mail/?view=cm&fs=1&to=neuraglobalindia@gmail.com" target="_blank" rel="noopener noreferrer" style={{ color: '#1A73E8', textDecoration: 'none', fontWeight: '500' }}>
+                            Contact admin
+                        </a>
                     </p>
                 </div>
             </motion.div>
