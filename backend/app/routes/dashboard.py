@@ -42,18 +42,28 @@ def get_stats():
     modules = Module.query.filter_by(is_active=True).order_by(Module.order).all()
     module_stats = []
     
+    from app.models.question import Question
+    
+    # Query module stats using a single database query grouped by module ID
+    module_stats_data = db.session.query(
+        Question.module_id,
+        func.count(Attempt.id).label('attempts'),
+        func.avg(Score.total_score).label('avg_score')
+    ).select_from(Attempt).join(Question).outerjoin(Score).filter(
+        Attempt.user_id == user_id,
+        Attempt.is_completed == True
+    ).group_by(Question.module_id).all()
+    
+    # Convert to easily searchable dictionary
+    stats_map = {
+        data.module_id: {
+            'attempts': data.attempts,
+            'avg_score': data.avg_score or 0
+        } for data in module_stats_data
+    }
+    
     for module in modules:
-        module_attempts = db.session.query(func.count(Attempt.id)).join(Attempt.question).filter(
-            Attempt.user_id == user_id,
-            Attempt.question.has(module_id=module.id),
-            Attempt.is_completed == True
-        ).scalar() or 0
-        
-        module_score = db.session.query(func.avg(Score.total_score)).join(Attempt).join(Attempt.question).filter(
-            Attempt.user_id == user_id,
-            Attempt.question.has(module_id=module.id),
-            Attempt.is_completed == True
-        ).scalar() or 0
+        stats = stats_map.get(module.id, {'attempts': 0, 'avg_score': 0})
         
         module_stats.append({
             'id': module.id,
@@ -61,8 +71,8 @@ def get_stats():
             'slug': module.slug,
             'icon': module.icon,
             'color': module.color,
-            'attempts': module_attempts,
-            'average_score': round(module_score, 1)
+            'attempts': stats['attempts'],
+            'average_score': round(stats['avg_score'], 1)
         })
     
     return jsonify({

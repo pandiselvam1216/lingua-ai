@@ -117,7 +117,7 @@ export default function Speaking() {
         try {
             // Local Evaluation
             const totalTime = selectedPrompt.time_limit || 60
-            const elapsed = totalTime - timeLeft // Rough estimate
+            const elapsed = Math.max(1, totalTime - timeLeft) // Prevent 0 or negative
             const result = evaluateSpeaking(transcript, elapsed)
 
             // Artificial delay to feel like "Analysis"
