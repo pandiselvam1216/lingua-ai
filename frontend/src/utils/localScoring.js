@@ -166,6 +166,21 @@ export const evaluateSpeaking = (transcript, timeElapsed, targetText = "") => {
         grammar: "Speech flow is coherent."
     };
 
+    // Filler words training from feedback trainer
+    const transcriptLower = transcript.toLowerCase();
+    const trainedFeedback = [];
+    if (transcriptLower.includes('um')) trainedFeedback.push("Try to minimize filler words like 'um'. Pausing is a better way to gather your thoughts.");
+    if (transcriptLower.includes('like')) trainedFeedback.push("Avoid overusing 'like' as a filler word. It can distract from your message.");
+    if (transcriptLower.includes('uh')) trainedFeedback.push("Using 'uh' frequently can make you sound less confident. Try taking a brief, silent pause instead.");
+    if (transcriptLower.includes('so ')) trainedFeedback.push("Vary your transitions instead of starting sentences with 'so'.");
+    if (transcriptLower.includes('basically')) trainedFeedback.push("Overusing words like 'basically' can detract from the substance of your point.");
+    if (transcriptLower.includes('you know')) trainedFeedback.push("Relying on 'you know' can weaken your statements. State your points with confidence.");
+    if (transcriptLower.includes('i mean')) trainedFeedback.push("Using 'I mean' frequently might make it seem like you're second-guessing yourself.");
+
+    if (trainedFeedback.length > 0) {
+        feedback.improvements = trainedFeedback.join(' ');
+    }
+
     // Save
     saveModuleScore('speaking', finalScore, timeElapsed);
 

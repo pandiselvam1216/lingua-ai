@@ -10,6 +10,7 @@ from app import db
 from app.models.module import Module, Question
 from app.models.attempt import Attempt, Score
 from app.services.scoring_service import ScoringService
+from app.services.feedback_trainer import FeedbackTrainer
 
 speaking_bp = Blueprint('speaking', __name__)
 
@@ -168,3 +169,20 @@ def get_attempts():
     return jsonify({
         'attempts': [a.to_dict() for a in attempts]
     }), 200
+
+@speaking_bp.route('/feedback/train', methods=['POST'])
+@jwt_required()
+def train_feedback():
+    """Add or update a feedback rule for the speaking module."""
+    data = request.get_json()
+    if not data or 'keyword' not in data or 'feedback' not in data:
+        return jsonify({'error': 'keyword and feedback required'}), 400
+    FeedbackTrainer.save_rule(data['keyword'], data['feedback'])
+    return jsonify({'message': 'Feedback rule saved'}), 200
+
+@speaking_bp.route('/feedback/rules', methods=['GET'])
+@jwt_required()
+def get_feedback_rules():
+    """Retrieve all feedback rules for the speaking module."""
+    rules = FeedbackTrainer.load_rules()
+    return jsonify({'rules': rules}), 200

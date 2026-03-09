@@ -1,0 +1,30 @@
+[
+  {
+    "keyword": "um",
+    "feedback": "Try to minimize filler words like 'um'. Pausing is a better way to gather your thoughts."
+  },
+  {
+    "keyword": "like",
+    "feedback": "Avoid overusing 'like' as a filler word. It can distract from your message."
+  },
+  {
+    "keyword": "uh",
+    "feedback": "Using 'uh' frequently can make you sound less confident. Try taking a brief, silent pause instead."
+  },
+  {
+    "keyword": "so",
+    "feedback": "Starting too many sentences with 'so' can disrupt your flow. Try varying your transitions."
+  },
+  {
+    "keyword": "basically",
+    "feedback": "Overusing words like 'basically' can detract from the substance of your point."
+  },
+  {
+    "keyword": "you know",
+    "feedback": "Relying on 'you know' can weaken your statements. State your points with confidence."
+  },
+  {
+    "keyword": "I mean",
+    "feedback": "Using 'I mean' frequently might make it seem like you're second-guessing yourself."
+  }
+]
