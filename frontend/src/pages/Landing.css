@@ -1,0 +1,217 @@
+/* ===== Landing Page Responsive Styles ===== */
+
+/* Navbar */
+.landing-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.landing-nav-auth {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Hero */
+.landing-hero-title {
+    font-size: 56px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.1;
+    margin: 0 auto 24px;
+    max-width: 800px;
+}
+
+.landing-hero-subtitle {
+    font-size: 20px;
+    color: #6B7280;
+    line-height: 1.6;
+    max-width: 600px;
+    margin: 0 auto 40px;
+}
+
+.landing-hero-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 60px;
+    flex-wrap: wrap;
+}
+
+/* Stats */
+.landing-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 48px;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 40px 0;
+    border-top: 1px solid #E5E7EB;
+}
+
+/* Features */
+.landing-features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+/* Modules */
+.landing-modules-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 16px;
+}
+
+/* Comparison Table */
+.landing-comparison-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 20px;
+    background-color: #1a1a2e;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.landing-comparison-wrapper table {
+    min-width: 700px;
+}
+
+/* AI Journey Steps */
+.ai-journey-step {
+    display: flex;
+    align-items: center;
+    gap: 56px;
+}
+
+/* CTA Buttons */
+.landing-cta-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* Footer */
+.landing-footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.landing-footer-links {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+}
+
+/* ===== Tablet (max 1024px) ===== */
+@media (max-width: 1024px) {
+    .landing-modules-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .landing-features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ===== Mobile (max 768px) ===== */
+@media (max-width: 768px) {
+
+    /* Navbar */
+    .landing-nav-links {
+        display: none;
+    }
+
+    .landing-signin-link {
+        display: none !important;
+    }
+
+    .landing-nav-getstarted {
+        padding: 8px 16px !important;
+        font-size: 13px !important;
+    }
+
+    .landing-nav-auth {
+        gap: 0 !important;
+    }
+
+    /* Hero */
+    .landing-hero-title {
+        font-size: 34px;
+    }
+
+    .landing-hero-subtitle {
+        font-size: 16px;
+    }
+
+    .landing-hero-buttons {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .landing-hero-buttons a,
+    .landing-hero-buttons button {
+        width: 100%;
+        max-width: 320px;
+        justify-content: center;
+    }
+
+    /* Stats */
+    .landing-stats-grid {
+        grid-template-columns: repeat(1, 1fr);
+        gap: 28px;
+    }
+
+    /* AI Journey Steps */
+    .ai-journey-step {
+        flex-direction: column !important;
+        align-items: center;
+        text-align: center;
+        gap: 32px;
+    }
+
+    /* Features */
+    .landing-features-grid {
+        grid-template-columns: repeat(1, 1fr);
+    }
+
+    /* Modules */
+    .landing-modules-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* CTA */
+    .landing-cta-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .landing-cta-buttons a {
+        width: 100%;
+        max-width: 280px;
+        text-align: center;
+        justify-content: center;
+    }
+
+    /* Footer */
+    .landing-footer-inner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* ===== Small Mobile (max 480px) ===== */
+@media (max-width: 480px) {
+    .landing-hero-title {
+        font-size: 28px;
+    }
+
+    .landing-modules-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
