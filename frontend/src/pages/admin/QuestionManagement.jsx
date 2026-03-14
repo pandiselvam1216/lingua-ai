@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     BookOpen, Plus, Edit2, Trash2, X, Check, Search,
-    Headphones, Mic, FileText, PenTool, CheckSquare, Upload, FileUp, Eye, EyeOff
+    Headphones, Mic, FileText, PenTool, CheckSquare, Upload, FileUp, Eye, EyeOff,
+    BookMarked, Brain
 } from 'lucide-react'
 import api from '../../services/api'
 import Modal from '../../components/common/Modal'
@@ -13,6 +14,8 @@ const moduleIcons = {
     reading: FileText,
     writing: PenTool,
     grammar: CheckSquare,
+    vocabulary: BookMarked,
+    'critical-thinking': Brain,
 }
 
 const moduleColors = {
@@ -21,6 +24,8 @@ const moduleColors = {
     reading: '#8B5CF6',
     writing: '#F97316',
     grammar: '#EF4444',
+    vocabulary: '#14B8A6',
+    'critical-thinking': '#06B6D4',
 }
 
 export default function QuestionManagement() {
@@ -47,7 +52,7 @@ export default function QuestionManagement() {
         options: [{ text: '', value: 'A' }, { text: '', value: 'B' }, { text: '', value: 'C' }, { text: '', value: 'D' }],
         correct_answer: 'A',
         explanation: '',
-        is_published: false,  // Add published status
+        is_published: true,  // Default to published so questions appear on user pages
         audio_data: null,  // base64 data URL for listening audio
         pdf_name: null,    // uploaded PDF filename
     })
@@ -72,8 +77,7 @@ export default function QuestionManagement() {
     const fetchQuestions = async () => {
         setLoading(true)
         try {
-            const modulePath = activeModule === 'critical-thinking' ? 'critical_thinking' : activeModule
-            const response = await api.get(`/admin/questions?module=${modulePath}`)
+            const response = await api.get(`/admin/questions?module=${activeModule}`)
             const normalized = (response.data.questions || []).map(item => ({
                 id: item.id,
                 module_id: item.module_id,
@@ -85,7 +89,8 @@ export default function QuestionManagement() {
                 explanation: item.explanation,
                 is_published: item.is_published || false,
                 is_active: item.is_active !== false,
-                type: item.options ? 'mcq' : 'prompt'
+                type: item.options ? 'mcq' : 'prompt',
+                audio_data: item.media_url || null,
             }))
             setQuestions(normalized)
             setUsingLocalStorage(false)
@@ -109,7 +114,7 @@ export default function QuestionManagement() {
                 correct_answer: question.correct_answer,
                 explanation: question.explanation || '',
                 is_published: question.is_published || false,
-                audio_data: question.audio_data || null,
+                audio_data: question.audio_data || question.media_url || null,
                 pdf_name: question.pdf_name || null,
             })
         } else {
@@ -121,7 +126,7 @@ export default function QuestionManagement() {
                 options: [{ text: '', value: 'A' }, { text: '', value: 'B' }, { text: '', value: 'C' }, { text: '', value: 'D' }],
                 correct_answer: 'A',
                 explanation: '',
-                is_published: false,
+                is_published: true,
                 audio_data: null,
                 pdf_name: null,
             })
@@ -191,6 +196,18 @@ export default function QuestionManagement() {
         reader.readAsDataURL(file)
     }
 
+    // Convert Google Drive sharing links to direct download URLs for audio playback
+    const convertDriveUrl = (url) => {
+        if (!url) return url
+        // Match: https://drive.google.com/file/d/FILE_ID/view?...
+        const match1 = url.match(/drive\.google\.com\/file\/d\/([^/]+)/)
+        if (match1) return `https://drive.google.com/uc?export=download&id=${match1[1]}`
+        // Match: https://drive.google.com/open?id=FILE_ID
+        const match2 = url.match(/drive\.google\.com\/open\?id=([^&]+)/)
+        if (match2) return `https://drive.google.com/uc?export=download&id=${match2[1]}`
+        return url  // Return as-is for direct audio URLs
+    }
+
     const handleCloseModal = () => {
         setShowModal(false)
         setEditingQuestion(null)
@@ -218,6 +235,9 @@ export default function QuestionManagement() {
             explanation: formData.explanation || null,
             is_published: formData.is_published,
             is_active: true,
+            media_url: formData.audio_data?.startsWith('data:') 
+                ? formData.audio_data   // base64 file upload — keep as-is
+                : convertDriveUrl(formData.audio_data) || null,  // Convert Drive URLs for playback
         }
 
         try {
@@ -227,8 +247,8 @@ export default function QuestionManagement() {
                 setQuestions(prev => prev.map(q => q.id === editingQuestion.id ? { ...q, ...payload, is_published: formData.is_published } : q))
             } else {
                 // Create new question - need to get module_id first
-                const moduleResponse = await api.get(`/modules`)
-                const modules = moduleResponse.data.modules || []
+                const moduleResponse = await api.get(`/admin/modules`)
+                const modules = moduleResponse.data || []
                 const moduleSlug = activeModule === 'critical-thinking' ? 'critical-thinking' : activeModule
                 const module = modules.find(m => m.slug === moduleSlug)
                 
@@ -302,6 +322,8 @@ export default function QuestionManagement() {
         { key: 'speaking', label: 'Speaking' },
         { key: 'reading', label: 'Reading' },
         { key: 'writing', label: 'Writing' },
+        { key: 'vocabulary', label: 'Vocabulary' },
+        { key: 'critical-thinking', label: 'Critical Thinking' },
     ]
 
     return (
@@ -822,44 +844,117 @@ export default function QuestionManagement() {
                                     </select>
                                 </div>
 
-                                {/* Audio Upload — Listening only */}
+                                {/* Audio Source — Listening only */}
                                 {activeModule === 'listening' && (
                                     <div style={{ marginBottom: '20px' }}>
                                         <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                                            Audio File
+                                            Audio Source
                                         </label>
-                                        <input
-                                            type="file"
-                                            accept="audio/*"
-                                            onChange={handleAudioUpload}
-                                            style={{
-                                                width: '100%',
-                                                padding: '10px 14px',
-                                                borderRadius: '10px',
-                                                border: '2px dashed #E5E7EB',
-                                                fontSize: '14px',
-                                                backgroundColor: '#F9FAFB',
-                                                cursor: 'pointer',
-                                            }}
-                                        />
+
+                                        {/* Tab selector: Upload vs URL */}
+                                        <div style={{ display: 'flex', gap: '0', marginBottom: '12px', borderRadius: '10px', overflow: 'hidden', border: '2px solid #E5E7EB' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData(p => ({ ...p, _audioMode: 'upload' }))}
+                                                style={{
+                                                    flex: 1, padding: '10px', border: 'none', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                                                    backgroundColor: (formData._audioMode || 'upload') === 'upload' ? '#3B82F6' : 'white',
+                                                    color: (formData._audioMode || 'upload') === 'upload' ? 'white' : '#6B7280',
+                                                }}
+                                            >
+                                                📁 Upload File
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData(p => ({ ...p, _audioMode: 'url' }))}
+                                                style={{
+                                                    flex: 1, padding: '10px', border: 'none', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                                                    borderLeft: '2px solid #E5E7EB',
+                                                    backgroundColor: formData._audioMode === 'url' ? '#3B82F6' : 'white',
+                                                    color: formData._audioMode === 'url' ? 'white' : '#6B7280',
+                                                }}
+                                            >
+                                                🔗 Paste URL
+                                            </button>
+                                        </div>
+
+                                        {/* Upload File mode */}
+                                        {(formData._audioMode || 'upload') === 'upload' && (
+                                            <>
+                                                <input
+                                                    type="file"
+                                                    accept="audio/*"
+                                                    onChange={handleAudioUpload}
+                                                    style={{
+                                                        width: '100%', padding: '10px 14px', borderRadius: '10px',
+                                                        border: '2px dashed #E5E7EB', fontSize: '14px',
+                                                        backgroundColor: '#F9FAFB', cursor: 'pointer',
+                                                    }}
+                                                />
+                                                <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '6px 0 0' }}>
+                                                    Supports MP3, WAV, OGG, etc.
+                                                </p>
+                                            </>
+                                        )}
+
+                                        {/* Paste URL mode */}
+                                        {formData._audioMode === 'url' && (
+                                            <>
+                                                <input
+                                                    type="url"
+                                                    value={formData.audio_data?.startsWith('data:') ? '' : (formData.audio_data || '')}
+                                                    onChange={(e) => setFormData(p => ({ ...p, audio_data: e.target.value }))}
+                                                    placeholder="https://drive.google.com/file/d/... or direct audio URL"
+                                                    style={{
+                                                        width: '100%', padding: '12px 14px', borderRadius: '10px',
+                                                        border: '2px solid #E5E7EB', fontSize: '14px', outline: 'none',
+                                                    }}
+                                                />
+                                                <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '6px 0 0' }}>
+                                                    Paste a Google Drive sharing link or direct audio URL. Drive links are auto-converted for playback.
+                                                </p>
+                                            </>
+                                        )}
+
+                                        {/* Audio preview */}
                                         {formData.audio_data && (
                                             <div style={{ marginTop: '10px' }}>
-                                                <audio
-                                                    controls
-                                                    src={formData.audio_data}
-                                                    style={{ width: '100%', borderRadius: '8px' }}
-                                                />
+                                                {/* Base64 upload — show inline player */}
+                                                {formData.audio_data.startsWith('data:') ? (
+                                                    <audio
+                                                        controls
+                                                        src={formData.audio_data}
+                                                        style={{ width: '100%', borderRadius: '8px' }}
+                                                    />
+                                                ) : (
+                                                    /* URL-based — show confirmation with test link */
+                                                    <div style={{
+                                                        padding: '12px 16px', borderRadius: '10px',
+                                                        backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0',
+                                                        display: 'flex', alignItems: 'center', gap: '10px',
+                                                    }}>
+                                                        <span style={{ fontSize: '20px' }}>✅</span>
+                                                        <div style={{ flex: 1 }}>
+                                                            <p style={{ fontSize: '13px', fontWeight: '600', color: '#166534', margin: 0 }}>
+                                                                Audio URL set
+                                                            </p>
+                                                            <a
+                                                                href={convertDriveUrl(formData.audio_data)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{ fontSize: '12px', color: '#3B82F6', wordBreak: 'break-all' }}
+                                                            >
+                                                                🔗 Test link in new tab
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 <button
                                                     type="button"
                                                     onClick={() => setFormData(p => ({ ...p, audio_data: null }))}
                                                     style={{
-                                                        marginTop: '6px',
-                                                        fontSize: '12px',
-                                                        color: '#EF4444',
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        cursor: 'pointer',
-                                                        padding: 0,
+                                                        marginTop: '6px', fontSize: '12px', color: '#EF4444',
+                                                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                                                     }}
                                                 >
                                                     ✕ Remove audio

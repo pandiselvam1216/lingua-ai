@@ -89,7 +89,7 @@ export default function CriticalThinking() {
 
         try {
             // 3. Fallback to admin-created speaking questions from localStorage/Supabase
-            const questions = await getModuleQuestions('speaking')
+            const questions = await getModuleQuestions('critical-thinking')
             const mapped = questions.map(q => ({
                 id: q.id,
                 title: q.title || q.content?.substring(0, 60) || 'JAM Topic',

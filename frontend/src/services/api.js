@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-    baseURL: '/api',
+    baseURL: 'http://localhost:5000/api',
     headers: {
         'Content-Type': 'application/json'
     }
@@ -13,6 +13,9 @@ api.interceptors.request.use(
         const token = localStorage.getItem('token')
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
+            console.log('[API] Request with token:', config.method.toUpperCase(), config.url)
+        } else {
+            console.log('[API] Request WITHOUT token:', config.method.toUpperCase(), config.url)
         }
         return config
     },

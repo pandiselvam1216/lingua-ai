@@ -41,12 +41,13 @@ def seed_data():
             if not User.query.filter_by(email='admin@neuralingua.com').first():
                 admin = User(
                     email='admin@neuralingua.com',
-                    password_hash=generate_password_hash('admin123'),
+                    password_hash='',
                     full_name='System Administrator',
                     role_id=admin_role.id,
                     is_active=True,
                     is_verified=True
                 )
+                admin.set_password('admin123')
                 db.session.add(admin)
         db.session.commit()
         

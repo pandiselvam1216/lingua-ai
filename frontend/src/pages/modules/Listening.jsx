@@ -58,7 +58,21 @@ export default function Listening() {
         }
     }
 
+    // Convert Google Drive sharing links to direct download URLs for audio playback
+    const getPlayableAudioUrl = (url) => {
+        if (!url) return null
+        if (url.startsWith('data:')) return url  // base64 — already playable
+        // Google Drive: /file/d/FILE_ID/
+        const match1 = url.match(/drive\.google\.com\/file\/d\/([^/]+)/)
+        if (match1) return `https://drive.google.com/uc?export=download&id=${match1[1]}`
+        // Google Drive: open?id=FILE_ID
+        const match2 = url.match(/drive\.google\.com\/open\?id=([^&]+)/)
+        if (match2) return `https://drive.google.com/uc?export=download&id=${match2[1]}`
+        return url  // Direct audio URL
+    }
+
     const currentQuestion = questions[currentIndex]
+    const audioSrc = currentQuestion ? getPlayableAudioUrl(currentQuestion.audio_data) : null
 
     const handlePlayPause = () => {
         const audio = audioRef.current
@@ -388,10 +402,10 @@ export default function Listening() {
                     padding: '32px',
                 }}>
                     {/* Hidden real audio element */}
-                    {currentQuestion.audio_data && (
+                    {audioSrc && (
                         <audio
                             ref={audioRef}
-                            src={currentQuestion.audio_data}
+                            src={audioSrc}
                             onTimeUpdate={handleAudioTimeUpdate}
                             onLoadedMetadata={handleAudioLoaded}
                             onEnded={handleAudioEnded}
@@ -401,7 +415,7 @@ export default function Listening() {
 
                     {/* Track label */}
                     <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.8)', fontSize: '13px', marginBottom: '16px', margin: '0 0 16px' }}>
-                        {currentQuestion.audio_data ? '🎵 ' + (currentQuestion.title || 'Listening Exercise') : '📝 Read the passage below carefully'}
+                        {audioSrc ? '🎵 ' + (currentQuestion.title || 'Listening Exercise') : '📝 Read the passage below carefully'}
                     </p>
 
                     <div style={{
@@ -413,19 +427,19 @@ export default function Listening() {
                     }}>
                         <button
                             onClick={() => setIsMuted(!isMuted)}
-                            disabled={!currentQuestion.audio_data}
+                            disabled={!audioSrc}
                             style={{
                                 width: '48px',
                                 height: '48px',
                                 borderRadius: '50%',
                                 border: 'none',
                                 backgroundColor: 'rgba(255,255,255,0.2)',
-                                cursor: currentQuestion.audio_data ? 'pointer' : 'default',
+                                cursor: audioSrc ? 'pointer' : 'default',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: 'white',
-                                opacity: currentQuestion.audio_data ? 1 : 0.4,
+                                opacity: audioSrc ? 1 : 0.4,
                             }}
                         >
                             {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -433,21 +447,21 @@ export default function Listening() {
 
                         <motion.button
                             onClick={handlePlayPause}
-                            disabled={!currentQuestion.audio_data}
-                            whileHover={currentQuestion.audio_data ? { scale: 1.05 } : {}}
-                            whileTap={currentQuestion.audio_data ? { scale: 0.95 } : {}}
+                            disabled={!audioSrc}
+                            whileHover={audioSrc ? { scale: 1.05 } : {}}
+                            whileTap={audioSrc ? { scale: 0.95 } : {}}
                             style={{
                                 width: '72px',
                                 height: '72px',
                                 borderRadius: '50%',
                                 border: 'none',
                                 backgroundColor: 'white',
-                                cursor: currentQuestion.audio_data ? 'pointer' : 'default',
+                                cursor: audioSrc ? 'pointer' : 'default',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
-                                opacity: currentQuestion.audio_data ? 1 : 0.5,
+                                opacity: audioSrc ? 1 : 0.5,
                             }}
                         >
                             {isPlaying ? (

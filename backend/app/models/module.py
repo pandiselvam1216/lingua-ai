@@ -61,7 +61,7 @@ class Question(db.Model):
     content = db.Column(db.Text, nullable=False)  # Question text or prompt
     
     # For audio/passage questions
-    media_url = db.Column(db.String(500))
+    media_url = db.Column(db.Text)  # Can be a URL or base64 data URI for audio
     passage_text = db.Column(db.Text)
     
     # Answer options (for MCQ)

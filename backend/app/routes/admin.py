@@ -325,7 +325,9 @@ def get_all_questions():
     query = Question.query.order_by(Question.created_at.desc())
     
     if module_slug:
-        module = Module.query.filter_by(slug=module_slug).first()
+        # Handle both 'critical-thinking' and 'critical_thinking' formats
+        normalized_slug = module_slug.replace('_', '-')
+        module = Module.query.filter_by(slug=normalized_slug).first()
         if not module:
             return jsonify({'error': 'Module not found'}), 404
         query = query.filter_by(module_id=module.id)
@@ -369,7 +371,7 @@ def create_question():
         time_limit=data.get('time_limit'),
         tags=data.get('tags'),
         is_active=data.get('is_active', True),
-        is_published=data.get('is_published', False)  # Default to unpublished
+        is_published=data.get('is_published', True)  # Default to published so questions appear on user pages
     )
     
     db.session.add(question)
@@ -467,3 +469,12 @@ def delete_question(question_id):
     db.session.commit()
     
     return jsonify({'message': 'Question deleted successfully'}), 200
+
+
+@admin_bp.route('/modules', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_modules():
+    """Get all available modules for question management"""
+    modules = Module.query.filter_by(is_active=True).all()
+    return jsonify([module.to_dict() for module in modules]), 200
