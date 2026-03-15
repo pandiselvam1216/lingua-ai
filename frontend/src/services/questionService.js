@@ -17,18 +17,6 @@ const MODULE_ENDPOINTS = {
     'critical-thinking':{ path: '/critical-thinking/prompts',     key: 'prompts' },
 }
 
-// Clear any stale cache from previous broken endpoint calls (one-time cleanup)
-const CACHE_VERSION_KEY = 'neuralingua_cache_v'
-const CURRENT_CACHE_VERSION = '2'
-if (localStorage.getItem(CACHE_VERSION_KEY) !== CURRENT_CACHE_VERSION) {
-    // Purge all old question caches
-    Object.keys(MODULE_ENDPOINTS).forEach(mod => {
-        localStorage.removeItem(`neuralingua_questions_${mod}`)
-    })
-    localStorage.setItem(CACHE_VERSION_KEY, CURRENT_CACHE_VERSION)
-    console.log('[QuestionService] Cleared stale question caches')
-}
-
 export async function getModuleQuestions(module) {
     const cacheKey = `neuralingua_questions_${module}`;
     const endpoint = MODULE_ENDPOINTS[module] || { path: `/${module}/questions`, key: 'questions' };
@@ -47,6 +35,23 @@ export async function getModuleQuestions(module) {
         audio_data: item.audio_data || item.media_url || null,
     }));
 
+    // Helper to safely cache data — strips large audio blobs to avoid quota errors
+    const safeCache = (data) => {
+        try {
+            // Strip base64 audio data before caching (too large for localStorage ~5MB limit)
+            const lightweight = data.map(item => ({
+                ...item,
+                audio_data: item.audio_data && item.audio_data.startsWith('data:')
+                    ? '[base64-audio]'  // placeholder — will be re-fetched from API
+                    : item.audio_data   // keep URLs (small)
+            }));
+            localStorage.setItem(cacheKey, JSON.stringify(lightweight));
+        } catch (e) {
+            // localStorage full — silently ignore, data will be fetched fresh next time
+            console.warn(`[QuestionService] Cache write failed for ${module}:`, e.message);
+        }
+    };
+
     // Network-First: Always try the API first
     try {
         console.log(`[QuestionService] Fetching ${module} from ${endpoint.path}`)
@@ -55,8 +60,8 @@ export async function getModuleQuestions(module) {
 
         if (data && data.length > 0) {
             const formatted = formatData(data);
-            localStorage.setItem(cacheKey, JSON.stringify(formatted));
             console.log(`[QuestionService] Got ${formatted.length} questions for ${module}`)
+            safeCache(formatted);  // cache in background, never blocks return
             return formatted;
         } else {
             console.log(`[QuestionService] API returned empty data for ${module}`)
@@ -72,7 +77,11 @@ export async function getModuleQuestions(module) {
             const list = JSON.parse(raw);
             if (list && list.length > 0) {
                 console.log(`[QuestionService] Using cached data for ${module} (${list.length} items)`)
-                return list;
+                // Filter out placeholder audio — those need fresh API data
+                return list.map(item => ({
+                    ...item,
+                    audio_data: item.audio_data === '[base64-audio]' ? null : item.audio_data
+                }));
             }
         }
     } catch (_) {
