@@ -4,7 +4,8 @@ import {
     BarChart2, Download, Search, TrendingUp, TrendingDown,
     Award, User, BookOpen, ChevronDown
 } from 'lucide-react'
-import { supabase } from '../../utils/supabaseClient'
+import api from '../../services/api'
+
 export default function Reports() {
     const [reports, setReports] = useState([])
     const [loading, setLoading] = useState(true)
@@ -16,53 +17,13 @@ export default function Reports() {
         fetchReports()
     }, [])
 
-    const calculateModuleAverage = (scores, module) => {
-        const moduleScores = scores.filter(s => s.module_type === module)
-        if (moduleScores.length === 0) return 0
-        const total = moduleScores.reduce((acc, curr) => acc + curr.score, 0)
-        return Math.round(total / moduleScores.length)
-    }
-
     const fetchReports = async () => {
         setLoading(true)
         try {
-            // Fetch users with role 'student'
-            const { data: users, error: usersError } = await supabase
-                .from('user_profiles')
-                .select('*')
-                .eq('role', 'student')
+            const res = await api.get('/admin/reports')
+            const reportsData = res.data.reports || []
 
-            if (usersError) throw usersError
-
-            // Fetch scores to get stats
-            const { data: scores, error: scoresError } = await supabase
-                .from('scores')
-                .select('*')
-
-            if (scoresError) throw scoresError
-
-            const reportsData = (users || []).map(student => {
-                const studentScores = (scores || []).filter(s => s.user_id === student.id)
-                const total_attempts = studentScores.length
-                const overall_average = total_attempts > 0 ? studentScores.reduce((acc, curr) => acc + curr.score, 0) / total_attempts : 0
-
-                const module_scores = {
-                    Listening: calculateModuleAverage(studentScores, 'listening'),
-                    Speaking: calculateModuleAverage(studentScores, 'speaking'),
-                    Reading: calculateModuleAverage(studentScores, 'reading'),
-                    Writing: calculateModuleAverage(studentScores, 'writing'),
-                    Grammar: calculateModuleAverage(studentScores, 'grammar'),
-                }
-
-                return {
-                    student,
-                    total_attempts,
-                    overall_average,
-                    module_scores
-                }
-            })
-
-            // Sort by overall average
+            // Sort by overall average initially
             reportsData.sort((a, b) => b.overall_average - a.overall_average)
             setReports(reportsData)
         } catch (error) {

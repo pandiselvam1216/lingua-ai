@@ -9,7 +9,7 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
 import { useState, useEffect } from 'react'
-import { fetchDashboardStats } from '../services/supabaseService'
+import api from '../services/api'
 import { getLocalState, checkAndIncrementStreak } from '../utils/localScoring'
 
 const modules = [
@@ -53,18 +53,26 @@ export default function Dashboard() {
             // Check streak first and update local state
             const updatedMetrics = checkAndIncrementStreak();
 
-            // Try Supabase first, fall back to local
-            const supabaseStats = await fetchDashboardStats()
-            if (supabaseStats.modulesCompleted > 0) {
-                setStats({ ...supabaseStats, streakDays: supabaseStats.streakDays || updatedMetrics.streakDays })
-                setChartData(supabaseStats.chartData)
+            // Try backend API first, fall back to local
+            const res = await api.get('/dashboard/stats')
+            const apiStats = res.data;
+            if (apiStats) {
+                // The backend API might wrap data differently, adapt if needed.
+                // But assuming it matches what we expect or we fallback.
+                setStats({ 
+                    overallScore: apiStats.overall_score || apiStats.overallScore || 0,
+                    modulesCompleted: apiStats.total_attempts || apiStats.modulesCompleted || 0,
+                    streakDays: apiStats.streakDays || updatedMetrics.streakDays,
+                    timeSpentMinutes: apiStats.timeSpentMinutes || updatedMetrics.timeSpentMinutes || 0
+                })
+                setChartData(apiStats.chart_data || apiStats.chartData || [])
             } else {
-                // Fall back to localStorage
                 const localState = getLocalState()
                 setStats(localState.metrics)
                 setChartData(localState.chartData || [])
             }
         } catch (e) {
+            console.error('Failed to fetch dashboard stats from API, falling back to local storage', e)
             const localState = getLocalState()
             setStats(localState.metrics)
             setChartData(localState.chartData || [])

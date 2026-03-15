@@ -4,9 +4,46 @@
  * Model: meta-llama/llama-3.1-8b-instruct:free (free tier)
  */
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+const OPENROUTER_API_URL = import.meta.env.VITE_OPENROUTER_URL || 'https://openrouter.ai/api/v1/chat/completions'
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY
-const MODEL = 'meta-llama/llama-3.1-8b-instruct:free'
+const MODEL = import.meta.env.VITE_AI_MODEL || 'meta-llama/llama-3.1-8b-instruct:free'
+
+/**
+ * Basic exponential backoff and timeout logic for LLM fetch calls
+ */
+const fetchWithRetryAndTimeout = async (url, options, retries = 2, timeoutMs = 30000) => {
+    try {
+        const controller = new AbortController()
+        const id = setTimeout(() => controller.abort(), timeoutMs)
+
+        const response = await fetch(url, { ...options, signal: controller.signal })
+        clearTimeout(id)
+
+        if (!response.ok) {
+            // If it's a 5xx error (OpenRouter overloaded), retry with backoff
+            if (response.status >= 500 && retries > 0) {
+                console.warn(`[AI Service] 5xx Error, retrying... (${retries} left)`)
+                await new Promise(r => setTimeout(r, 1500)) // simple 1.5s backoff
+                return fetchWithRetryAndTimeout(url, options, retries - 1, timeoutMs)
+            }
+            const err = await response.text()
+            console.error('[AI Service] OpenRouter error:', err)
+            return null
+        }
+
+        return await response.json()
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.error('[AI Service] Request timed out after', timeoutMs, 'ms')
+        } else if (retries > 0) {
+            console.warn(`[AI Service] Network error, retrying... (${retries} left)`)
+            await new Promise(r => setTimeout(r, 1000))
+            return fetchWithRetryAndTimeout(url, options, retries - 1, timeoutMs)
+        }
+        console.error('[AI Service] Fetch failed:', error.message)
+        return null
+    }
+}
 
 const chat = async (systemPrompt, userMessage) => {
     if (!API_KEY) {
@@ -14,43 +51,34 @@ const chat = async (systemPrompt, userMessage) => {
         return null
     }
 
-    const response = await fetch(OPENROUTER_API_URL, {
+    const payload = {
+        model: MODEL,
+        messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+        ],
+        max_tokens: 400,
+        temperature: 0.7
+    }
+
+    const data = await fetchWithRetryAndTimeout(OPENROUTER_API_URL, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${API_KEY}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'http://localhost:5173',
+            'HTTP-Referer': window.location.origin || 'http://localhost:5173',
             'X-Title': 'NeuraLingua',
         },
-        body: JSON.stringify({
-            model: MODEL,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userMessage }
-            ],
-            max_tokens: 400,
-            temperature: 0.7
-        })
+        body: JSON.stringify(payload)
     })
 
-    if (!response.ok) {
-        const err = await response.text()
-        console.error('OpenRouter error:', err)
-        return null
-    }
-
-    const data = await response.json()
-    return data.choices?.[0]?.message?.content || null
+    return data?.choices?.[0]?.message?.content || null
 }
 
 // --- AI Feedback Functions ---
 
 /**
  * Get AI feedback for a speaking session
- * @param {string} transcript - The speech transcript
- * @param {string} topic - The topic being spoken about  
- * @param {number} wpm - Words per minute
- * @returns {Promise<string>} AI feedback text
  */
 export const getAISpeakingFeedback = async (transcript, topic, wpm) => {
     const system = `You are an expert English speaking coach specializing in Indian English (IndE). 
@@ -67,10 +95,6 @@ Provide brief coaching feedback.`
 
 /**
  * Get AI feedback for a writing submission
- * @param {string} text - The written essay/response
- * @param {string} topic - The writing topic/prompt
- * @param {number} errorCount - Number of grammar errors found
- * @returns {Promise<string>} AI feedback text
  */
 export const getAIWritingFeedback = async (text, topic, errorCount) => {
     const system = `You are an expert English writing coach specializing in Indian English (IndE).
@@ -88,9 +112,6 @@ Provide brief coaching feedback.`
 
 /**
  * Get AI feedback for a critical thinking / JAM session
- * @param {string} response - The student's response
- * @param {string} prompt - The discussion prompt/question
- * @returns {Promise<Object>} Score and feedback
  */
 export const getAICriticalThinkingFeedback = async (response, prompt) => {
     const system = `You are an expert critical thinking evaluator for English learners.
@@ -108,11 +129,8 @@ Evaluate and return JSON only.`
     if (!result) return null
 
     try {
-        // Extract JSON even if there's extra text
         const jsonMatch = result.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0])
-        }
+        if (jsonMatch) return JSON.parse(jsonMatch[0])
     } catch (e) {
         console.warn('Failed to parse AI response as JSON:', e)
     }
@@ -121,7 +139,6 @@ Evaluate and return JSON only.`
 
 /**
  * Generate AI-powered JAM session topics
- * @returns {Promise<Array>} Array of topic objects
  */
 export const generateJAMTopics = async () => {
     const system = `You are an English language teacher. Generate discussion topics for JAM (Just A Minute) sessions.
@@ -135,9 +152,7 @@ Return ONLY valid JSON array with exactly 5 topics in this format:
 
     try {
         const jsonMatch = result.match(/\[[\s\S]*\]/)
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0])
-        }
+        if (jsonMatch) return JSON.parse(jsonMatch[0])
     } catch (e) {
         console.warn('Failed to parse AI topics:', e)
     }
@@ -145,14 +160,12 @@ Return ONLY valid JSON array with exactly 5 topics in this format:
 }
 
 /**
- * Perform a deep analysis of writing content with knowledge of Indian English and culture.
- * @param {string} text - User's writing
- * @returns {Promise<Object>} Deep evaluation
+ * Perform a deep analysis of writing content with knowledge of Indian English
  */
 export const evaluateWritingAI = async (text) => {
     const system = `You are a professional English editor specializing in Indian English (IndE). 
 Your task is to analyze the student's writing for grammar, vocabulary, and content.
-CRITICAL: Do NOT flag Indian names (e.g., Arjun, Priya), places (e.g., Chennai, Madurai), festivals (e.g., Diwali, Pongal), or cultural terms (e.g., Bharatanatyam, Cholas, Vedas) as spelling errors. 
+CRITICAL: Do NOT flag Indian names (e.g., Arjun, Priya), places (e.g., Chennai), festivals (e.g., Diwali), or cultural terms as spelling errors. 
 
 Return ONLY valid JSON in this exact format:
 {
@@ -167,7 +180,7 @@ Return ONLY valid JSON in this exact format:
      "Specific suggestion 2"
   ]
 }
-Scores are 0-100. If the content is culturally relevant to India, factor that into a positive vocabulary score.`
+Scores are 0-100. Factor Indian cultural context into positive vocabulary score.`
 
     const user = `Analyze this writing text: "${text.substring(0, 2000)}"`
 

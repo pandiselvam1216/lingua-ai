@@ -372,3 +372,86 @@ p {
     padding: 16px;
   }
 }
+
+/* ===== MODULE PAGE UTILITIES ===== */
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-primary:not(:disabled):hover {
+  background-color: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2);
+}
+
+.btn-secondary {
+  background-color: #F3F4F6;
+  color: #374151;
+}
+
+.btn-secondary:not(:disabled):hover {
+  background-color: #E5E7EB;
+}
+
+/* Answer Options */
+.answer-option {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 2px solid #E5E7EB;
+  background-color: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  transition: all 0.2s;
+  font-size: 15px;
+  color: #1F2937;
+}
+
+.answer-option:not([disabled]):hover {
+  border-color: #D1D5DB;
+  background-color: #F9FAFB;
+}
+
+.answer-option.selected {
+  border-color: #3B82F6;
+  background-color: #EFF6FF;
+  font-weight: 500;
+}
+
+.answer-option.correct {
+  border-color: #22C55E;
+  background-color: #F0FDF4;
+}
+
+.answer-option.wrong {
+  border-color: #EF4444;
+  background-color: #FEF2F2;
+}
+
+.answer-option[disabled] {
+  cursor: default;
+}

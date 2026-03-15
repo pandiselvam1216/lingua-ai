@@ -4,7 +4,6 @@
  * and persisting data to localStorage.
  */
 
-import { insertScore } from '../services/supabaseService'
 import { evaluateWritingAI } from '../services/aiService'
 
 const STORAGE_KEY = 'neuraLingua_userState';
@@ -126,11 +125,7 @@ export const saveModuleScore = (type, score, timeSpent = 0) => {
 
     saveLocalState(state);
 
-    // Sync to Supabase asynchronously using centralized service
-    insertScore(type, score, {
-        timeSpent: timeSpent,
-        date: entry.date
-    });
+    saveLocalState(state);
 
     return state;
 };
