@@ -63,13 +63,29 @@ export default function ListeningModulePage() {
     }
 
     // Helper for playable audio URLs (from Listening.jsx)
-    const getPlayableAudioUrl = (url) => {
-        if (!url) return null
+    const getPlayableAudioUrl = (url, question = null) => {
+        if (!url) {
+            // Fallback: If no URL but we have content, we can use a generic TTS as a secondary backup
+            if (question && question.content && !question.tts_config) {
+                const safeText = encodeURIComponent(question.content.substring(0, 200));
+                return `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${safeText}`;
+            }
+            return null
+        }
+        
+        // 1. Handle base64
         if (url.startsWith('data:')) return url
+        if (url.length > 500 && !url.includes('http')) {
+            // Likely raw base64 data without prefix
+            return `data:audio/mp3;base64,${url}`
+        }
+
+        // 2. Handle Google Drive URLs
         const match1 = url.match(/drive\.google\.com\/file\/d\/([^/]+)/)
         if (match1) return `https://drive.google.com/uc?export=download&id=${match1[1]}`
         const match2 = url.match(/drive\.google\.com\/open\?id=([^&]+)/)
         if (match2) return `https://drive.google.com/uc?export=download&id=${match2[1]}`
+        
         return url
     }
 
@@ -191,7 +207,7 @@ export default function ListeningModulePage() {
                                     
                                     <div style={{ marginBottom: '40px' }}>
                                         <AudioPlayer 
-                                            src={selectedItem.audio_url} 
+                                            src={getPlayableAudioUrl(selectedItem.audio_url, selectedItem)} 
                                             ttsConfig={selectedItem.tts_config}
                                             text={selectedItem.content}
                                             title={selectedItem.title}
@@ -224,7 +240,7 @@ export default function ListeningModulePage() {
                                     style={{ backgroundColor: 'white', borderRadius: '24px', padding: '40px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
                                 >
                                     <AudioPlayer
-                                        src={getPlayableAudioUrl(currentQuizQuestion.audio_data)}
+                                        src={getPlayableAudioUrl(currentQuizQuestion.audio_data, currentQuizQuestion)}
                                         ttsConfig={currentQuizQuestion?.tts_config}
                                         text={currentQuizQuestion?.content}
                                         title={currentQuizQuestion?.title || 'Listening Exercise'}

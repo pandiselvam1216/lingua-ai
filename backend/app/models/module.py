@@ -126,7 +126,7 @@ class Question(db.Model):
             'points': self.points,
             'time_limit': self.time_limit,
             'tags': self.tags,
-            'tts_config': json.loads(self.tts_config) if self.tts_config else None,
+            'tts_config': json.loads(self.tts_config) if self.tts_config and isinstance(self.tts_config, str) else self.tts_config,
             'pdf_name': self.pdf_name,
             'is_active': self.is_active,
             'is_published': self.is_published
