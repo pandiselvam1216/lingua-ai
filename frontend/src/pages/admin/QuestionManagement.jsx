@@ -40,6 +40,8 @@ export default function QuestionManagement() {
     const [saveSuccess, setSaveSuccess] = useState(false)
     const [usingLocalStorage, setUsingLocalStorage] = useState(false)
     const [alertConfig, setAlertConfig] = useState({ isOpen: false })
+    const [availableVoices, setAvailableVoices] = useState([])
+    const [sourceType, setSourceType] = useState('file') // 'file' or 'tts'
 
     const showAlert = (title, message, theme = 'info') => {
         setAlertConfig({ isOpen: true, title, message, theme, type: 'alert' })
@@ -54,7 +56,13 @@ export default function QuestionManagement() {
         explanation: '',
         is_published: true,  // Default to published so questions appear on user pages
         audio_data: null,  // base64 data URL for listening audio
-        pdf_name: null,    // uploaded PDF filename
+        pdf_name: null,    // uploaded
+        tts_config: {
+            voiceName: '',
+            rate: 1,
+            pitch: 1,
+            textOverride: ''
+        }
     })
     const [pdfLoading, setPdfLoading] = useState(false)
     const [pdfDragOver, setPdfDragOver] = useState(false)
@@ -72,7 +80,22 @@ export default function QuestionManagement() {
 
     useEffect(() => {
         fetchQuestions()
+        loadVoices()
+        if (window.speechSynthesis) {
+            window.speechSynthesis.onvoiceschanged = loadVoices
+        }
     }, [activeModule])
+
+    const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices()
+        setAvailableVoices(voices)
+        if (voices.length > 0 && !formData.tts_config?.voiceName) {
+            setFormData(prev => ({
+                ...prev,
+                tts_config: { ...prev.tts_config, voiceName: voices[0].name }
+            }))
+        }
+    }
 
     const fetchQuestions = async () => {
         setLoading(true)
@@ -91,6 +114,8 @@ export default function QuestionManagement() {
                 is_active: item.is_active !== false,
                 type: item.options ? 'mcq' : 'prompt',
                 audio_data: item.media_url || null,
+                pdf_name: item.pdf_name || null,
+                tts_config: item.tts_config || null
             }))
             setQuestions(normalized)
             setUsingLocalStorage(false)
@@ -116,7 +141,13 @@ export default function QuestionManagement() {
                 is_published: question.is_published || false,
                 audio_data: question.audio_data || question.media_url || null,
                 pdf_name: question.pdf_name || null,
+                tts_config: question.tts_config || {
+                    voiceName: availableVoices[0]?.name || '',
+                    rate: 1,
+                    pitch: 1
+                }
             })
+            setSourceType(question.tts_config ? 'tts' : 'file')
         } else {
             setEditingQuestion(null)
             setFormData({
@@ -129,7 +160,13 @@ export default function QuestionManagement() {
                 is_published: true,
                 audio_data: null,
                 pdf_name: null,
+                tts_config: {
+                    voiceName: availableVoices[0]?.name || '',
+                    rate: 1,
+                    pitch: 1
+                }
             })
+            setSourceType('file')
         }
         setShowModal(true)
     }
@@ -196,6 +233,18 @@ export default function QuestionManagement() {
         reader.readAsDataURL(file)
     }
 
+    const handlePreviewTTS = () => {
+        if (!window.speechSynthesis) return
+        window.speechSynthesis.cancel()
+        const textToSpeak = formData.tts_config.textOverride || formData.content || "Please enter some text to preview."
+        const utterance = new SpeechSynthesisUtterance(textToSpeak)
+        const voice = availableVoices.find(v => v.name === formData.tts_config.voiceName)
+        if (voice) utterance.voice = voice
+        utterance.rate = formData.tts_config.rate
+        utterance.pitch = formData.tts_config.pitch
+        window.speechSynthesis.speak(utterance)
+    }
+
     // Convert Google Drive sharing links to direct download URLs for audio playback
     const convertDriveUrl = (url) => {
         if (!url) return url
@@ -235,9 +284,12 @@ export default function QuestionManagement() {
             explanation: formData.explanation || null,
             is_published: formData.is_published,
             is_active: true,
-            media_url: formData.audio_data?.startsWith('data:') 
-                ? formData.audio_data   // base64 file upload — keep as-is
-                : convertDriveUrl(formData.audio_data) || null,  // Convert Drive URLs for playback
+            media_url: sourceType === 'file' 
+                ? (formData.audio_data?.startsWith('data:') 
+                    ? formData.audio_data   // base64 file upload — keep as-is
+                    : convertDriveUrl(formData.audio_data) || null)
+                : null,
+            tts_config: sourceType === 'tts' ? formData.tts_config : null,
         }
 
         try {
@@ -332,7 +384,7 @@ export default function QuestionManagement() {
             backgroundColor: '#F9FAFB',
             minHeight: '100vh',
         }}>
-            {/* Local Storage Mode Banner */}
+            {/* Local Storage Mode Banner - Made more general */}
             {usingLocalStorage && (
                 <div style={{
                     marginBottom: '20px',
@@ -348,9 +400,7 @@ export default function QuestionManagement() {
                 }}>
                     <span>⚠️</span>
                     <div>
-                        <strong>Saved locally (browser only).</strong> Questions are not synced to the database yet because the Supabase <code>questions</code> table is missing or doesn't have the required columns.<br />
-                        <strong>Run this SQL in your Supabase SQL Editor to fix:</strong>
-                        <pre style={{ marginTop: '8px', padding: '10px', backgroundColor: '#FEF3C7', borderRadius: '6px', fontSize: '12px', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>{`-- Create questions table (if missing)\nCREATE TABLE IF NOT EXISTS public.questions (\n  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n  module text NOT NULL,\n  title text,\n  content text NOT NULL,\n  difficulty integer DEFAULT 1,\n  options jsonb,\n  correct_answer text,\n  explanation text,\n  audio_data text,\n  pdf_name text,\n  created_at timestamptz DEFAULT now()\n);\n\n-- Or add missing columns to existing table:\nALTER TABLE public.questions\n  ADD COLUMN IF NOT EXISTS title text,\n  ADD COLUMN IF NOT EXISTS pdf_name text;\n\n-- Allow authenticated users\nALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;\nCREATE POLICY IF NOT EXISTS \"allow_all\" ON public.questions FOR ALL USING (true);`}</pre>
+                        <strong>Connection Issue:</strong> Currently showing locally saved questions. Please check if the backend server is running correctly or if your internet connection is stable.<br />
                     </div>
                 </div>
             )}
@@ -844,125 +894,165 @@ export default function QuestionManagement() {
                                     </select>
                                 </div>
 
-                                {/* Audio Source — Listening only */}
-                                {activeModule === 'listening' && (
-                                    <div style={{ marginBottom: '20px' }}>
-                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                                            Audio Source
-                                        </label>
+                                {/* Audio Configuration */}
+                                <div style={{ marginBottom: '24px', padding: '20px', backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: '700', color: '#1E293B', marginBottom: '16px' }}>
+                                        <Headphones size={18} style={{ color: '#3B82F6' }} /> Audio Configuration
+                                    </label>
 
-                                        {/* Tab selector: Upload vs URL */}
-                                        <div style={{ display: 'flex', gap: '0', marginBottom: '12px', borderRadius: '10px', overflow: 'hidden', border: '2px solid #E5E7EB' }}>
-                                            <button
-                                                type="button"
-                                                onClick={() => setFormData(p => ({ ...p, _audioMode: 'upload' }))}
-                                                style={{
-                                                    flex: 1, padding: '10px', border: 'none', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-                                                    backgroundColor: (formData._audioMode || 'upload') === 'upload' ? '#3B82F6' : 'white',
-                                                    color: (formData._audioMode || 'upload') === 'upload' ? 'white' : '#6B7280',
-                                                }}
-                                            >
-                                                📁 Upload File
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setFormData(p => ({ ...p, _audioMode: 'url' }))}
-                                                style={{
-                                                    flex: 1, padding: '10px', border: 'none', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-                                                    borderLeft: '2px solid #E5E7EB',
-                                                    backgroundColor: formData._audioMode === 'url' ? '#3B82F6' : 'white',
-                                                    color: formData._audioMode === 'url' ? 'white' : '#6B7280',
-                                                }}
-                                            >
-                                                🔗 Paste URL
-                                            </button>
-                                        </div>
+                                    {/* Source Type Toggle */}
+                                    <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSourceType('file')}
+                                            style={{
+                                                flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid',
+                                                borderColor: sourceType === 'file' ? '#3B82F6' : '#E2E8F0',
+                                                backgroundColor: sourceType === 'file' ? '#EFF6FF' : 'white',
+                                                color: sourceType === 'file' ? '#2563EB' : '#64748B',
+                                                fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            📁 Audio File
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSourceType('tts')}
+                                            style={{
+                                                flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid',
+                                                borderColor: sourceType === 'tts' ? '#3B82F6' : '#E2E8F0',
+                                                backgroundColor: sourceType === 'tts' ? '#EFF6FF' : 'white',
+                                                color: sourceType === 'tts' ? '#2563EB' : '#64748B',
+                                                fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            ✨ AI Voice (TTS)
+                                        </button>
+                                    </div>
 
-                                        {/* Upload File mode */}
-                                        {(formData._audioMode || 'upload') === 'upload' && (
-                                            <>
-                                                <input
-                                                    type="file"
-                                                    accept="audio/*"
-                                                    onChange={handleAudioUpload}
+                                    {sourceType === 'file' ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                            {/* Tab selector: Upload vs URL */}
+                                            <div style={{ display: 'flex', gap: '0', borderRadius: '10px', overflow: 'hidden', border: '2px solid #E5E7EB' }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(p => ({ ...p, _audioMode: 'upload' }))}
                                                     style={{
-                                                        width: '100%', padding: '10px 14px', borderRadius: '10px',
-                                                        border: '2px dashed #E5E7EB', fontSize: '14px',
-                                                        backgroundColor: '#F9FAFB', cursor: 'pointer',
+                                                        flex: 1, padding: '10px', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                                                        backgroundColor: (formData._audioMode || 'upload') === 'upload' ? '#3B82F6' : 'white',
+                                                        color: (formData._audioMode || 'upload') === 'upload' ? 'white' : '#6B7280',
                                                     }}
-                                                />
-                                                <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '6px 0 0' }}>
-                                                    Supports MP3, WAV, OGG, etc.
-                                                </p>
-                                            </>
-                                        )}
+                                                >
+                                                    Upload File
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(p => ({ ...p, _audioMode: 'url' }))}
+                                                    style={{
+                                                        flex: 1, padding: '10px', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                                                        borderLeft: '2px solid #E5E7EB',
+                                                        backgroundColor: formData._audioMode === 'url' ? '#3B82F6' : 'white',
+                                                        color: formData._audioMode === 'url' ? 'white' : '#6B7280',
+                                                    }}
+                                                >
+                                                    Paste URL
+                                                </button>
+                                            </div>
 
-                                        {/* Paste URL mode */}
-                                        {formData._audioMode === 'url' && (
-                                            <>
+                                            {/* Upload File mode */}
+                                            {(formData._audioMode || 'upload') === 'upload' && (
+                                                <input
+                                                    type="file" accept="audio/*" onChange={handleAudioUpload}
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '2px dashed #CBD5E1', fontSize: '13px', backgroundColor: 'white' }}
+                                                />
+                                            )}
+
+                                            {/* Paste URL mode */}
+                                            {formData._audioMode === 'url' && (
                                                 <input
                                                     type="url"
                                                     value={formData.audio_data?.startsWith('data:') ? '' : (formData.audio_data || '')}
                                                     onChange={(e) => setFormData(p => ({ ...p, audio_data: e.target.value }))}
-                                                    placeholder="https://drive.google.com/file/d/... or direct audio URL"
-                                                    style={{
-                                                        width: '100%', padding: '12px 14px', borderRadius: '10px',
-                                                        border: '2px solid #E5E7EB', fontSize: '14px', outline: 'none',
-                                                    }}
+                                                    placeholder="Paste Google Drive link or direct audio URL"
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '2px solid #E2E8F0', fontSize: '13px' }}
                                                 />
-                                                <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '6px 0 0' }}>
-                                                    Paste a Google Drive sharing link or direct audio URL. Drive links are auto-converted for playback.
-                                                </p>
-                                            </>
-                                        )}
+                                            )}
 
-                                        {/* Audio preview */}
-                                        {formData.audio_data && (
-                                            <div style={{ marginTop: '10px' }}>
-                                                {/* Base64 upload — show inline player */}
-                                                {formData.audio_data.startsWith('data:') ? (
-                                                    <audio
-                                                        controls
-                                                        src={formData.audio_data}
-                                                        style={{ width: '100%', borderRadius: '8px' }}
-                                                    />
-                                                ) : (
-                                                    /* URL-based — show confirmation with test link */
-                                                    <div style={{
-                                                        padding: '12px 16px', borderRadius: '10px',
-                                                        backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0',
-                                                        display: 'flex', alignItems: 'center', gap: '10px',
-                                                    }}>
-                                                        <span style={{ fontSize: '20px' }}>✅</span>
-                                                        <div style={{ flex: 1 }}>
-                                                            <p style={{ fontSize: '13px', fontWeight: '600', color: '#166534', margin: 0 }}>
-                                                                Audio URL set
-                                                            </p>
-                                                            <a
-                                                                href={convertDriveUrl(formData.audio_data)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                style={{ fontSize: '12px', color: '#3B82F6', wordBreak: 'break-all' }}
-                                                            >
-                                                                🔗 Test link in new tab
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setFormData(p => ({ ...p, audio_data: null }))}
-                                                    style={{
-                                                        marginTop: '6px', fontSize: '12px', color: '#EF4444',
-                                                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                                                    }}
-                                                >
-                                                    ✕ Remove audio
-                                                </button>
+                                            {/* Audio preview */}
+                                            {formData.audio_data && (
+                                                <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                                                    {formData.audio_data.startsWith('data:') ? (
+                                                        <audio controls src={formData.audio_data} style={{ width: '100%', height: '32px' }} />
+                                                    ) : (
+                                                        <a href={convertDriveUrl(formData.audio_data)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#3B82F6' }}>🔗 Test audio link</a>
+                                                    )}
+                                                    <button type="button" onClick={() => setFormData(p => ({ ...p, audio_data: null }))} style={{ display: 'block', marginTop: '8px', fontSize: '12px', color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}>✕ Remove</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>AI Voice</label>
+                                                    <select
+                                                        value={formData.tts_config.voiceName}
+                                                        onChange={(e) => setFormData(p => ({ ...p, tts_config: { ...p.tts_config, voiceName: e.target.value } }))}
+                                                        style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '13px' }}
+                                                    >
+                                                        {availableVoices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handlePreviewTTS}
+                                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', backgroundColor: '#3B82F6', color: 'white', border: 'none', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                                                    >
+                                                        🔊 Preview Voice
+                                                    </button>
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
+
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>Text for AI Voice (Optional)</label>
+                                                <textarea
+                                                    value={formData.tts_config.textOverride || ''}
+                                                    onChange={(e) => setFormData(p => ({ ...p, tts_config: { ...p.tts_config, textOverride: e.target.value } }))}
+                                                    placeholder="If empty, it will read the main question content."
+                                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '13px', minHeight: '80px', resize: 'vertical' }}
+                                                />
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                        <label style={{ fontSize: '12px', color: '#64748B' }}>Speed</label>
+                                                        <span style={{ fontSize: '12px', color: '#3B82F6', fontWeight: 'bold' }}>{formData.tts_config.rate}x</span>
+                                                    </div>
+                                                    <input
+                                                        type="range" min="0.5" max="2" step="0.1"
+                                                        value={formData.tts_config.rate}
+                                                        onChange={(e) => setFormData(p => ({ ...p, tts_config: { ...p.tts_config, rate: parseFloat(e.target.value) } }))}
+                                                        style={{ width: '100%' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                        <label style={{ fontSize: '12px', color: '#64748B' }}>Tune</label>
+                                                        <span style={{ fontSize: '12px', color: '#3B82F6', fontWeight: 'bold' }}>{formData.tts_config.pitch}</span>
+                                                    </div>
+                                                    <input
+                                                        type="range" min="0" max="2" step="0.1"
+                                                        value={formData.tts_config.pitch}
+                                                        onChange={(e) => setFormData(p => ({ ...p, tts_config: { ...p.tts_config, pitch: parseFloat(e.target.value) } }))}
+                                                        style={{ width: '100%' }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
 
                                 {['grammar', 'listening', 'reading'].includes(activeModule) && (
                                     <>

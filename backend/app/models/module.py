@@ -48,6 +48,30 @@ class Module(db.Model):
         ]
 
 
+
+class ListeningModule(db.Model):
+    """Structured listening content (not questions)"""
+    __tablename__ = 'listening_modules'
+    
+    id = db.Column(db.String(36), primary_key=True) # UUID as string for SQLite compatibility if needed, but the plan says UUID
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    audio_url = db.Column(db.Text, nullable=True) # Optional if TTS is used
+    tts_config = db.Column(db.Text, nullable=True) # JSON string for voice, rate, pitch
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        import json
+        return {
+            'id': self.id,
+            'title': self.title,
+            'content': self.content,
+            'audio_url': self.audio_url,
+            'tts_config': json.loads(self.tts_config) if self.tts_config else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
 class Question(db.Model):
     """Questions for all modules"""
     __tablename__ = 'questions'
@@ -63,6 +87,7 @@ class Question(db.Model):
     # For audio/passage questions
     media_url = db.Column(db.Text)  # Can be a URL or base64 data URI for audio
     passage_text = db.Column(db.Text)
+    pdf_name = db.Column(db.String(255))
     
     # Answer options (for MCQ)
     options = db.Column(db.JSON)  # List of options
@@ -74,6 +99,7 @@ class Question(db.Model):
     points = db.Column(db.Integer, default=10)
     time_limit = db.Column(db.Integer)  # In seconds
     tags = db.Column(db.JSON)  # List of tags
+    tts_config = db.Column(db.Text, nullable=True) # JSON string for voice, rate, pitch
     
     # Status
     is_active = db.Column(db.Boolean, default=True)
@@ -86,6 +112,7 @@ class Question(db.Model):
     attempts = db.relationship('Attempt', back_populates='question', lazy='dynamic')
     
     def to_dict(self, include_answer=False):
+        import json
         data = {
             'id': self.id,
             'module_id': self.module_id,
@@ -99,6 +126,8 @@ class Question(db.Model):
             'points': self.points,
             'time_limit': self.time_limit,
             'tags': self.tags,
+            'tts_config': json.loads(self.tts_config) if self.tts_config else None,
+            'pdf_name': self.pdf_name,
             'is_active': self.is_active,
             'is_published': self.is_published
         }

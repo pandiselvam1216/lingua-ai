@@ -1,179 +1,164 @@
-import React, { useRef, useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Play, Pause, Square, Volume2, Clock } from 'lucide-react'
 
-/**
- * Reusable Audio Player component with custom UI
- * @param {Object} props
- * @param {string} props.src - URL or base64 audio source
- * @param {string} props.title - Title displayed above player
- * @param {boolean} props.disabled - Whether player is interactive
- */
-export default function AudioPlayer({ src, title = 'Audio Clip', disabled = false }) {
-    const audioRef = useRef(null)
+export default function AudioPlayer({ src, ttsConfig, text }) {
     const [isPlaying, setIsPlaying] = useState(false)
-    const [progress, setProgress] = useState(0)
-    const [duration, setDuration] = useState(0)
     const [currentTime, setCurrentTime] = useState(0)
-    const [isMuted, setIsMuted] = useState(false)
-
-    // Reset when src changes
-    useEffect(() => {
-        setIsPlaying(false)
-        setProgress(0)
-        setCurrentTime(0)
-        setDuration(0)
-    }, [src])
+    const [duration, setDuration] = useState(0)
+    const audioRef = useRef(null)
+    const utteranceRef = useRef(null)
 
     useEffect(() => {
-        if (audioRef.current) audioRef.current.muted = isMuted
-    }, [isMuted])
+        // Handle normal audio file
+        if (src) {
+            const audio = audioRef.current
+            if (!audio) return
 
-    const handlePlayPause = () => {
-        const audio = audioRef.current
-        if (!audio || disabled || !src) return
-        if (isPlaying) {
-            audio.pause()
-        } else {
-            audio.play()
+            const setAudioData = () => setDuration(audio.duration)
+            const setAudioTime = () => setCurrentTime(audio.currentTime)
+
+            audio.addEventListener('loadeddata', setAudioData)
+            audio.addEventListener('timeupdate', setAudioTime)
+            audio.addEventListener('ended', () => setIsPlaying(false))
+
+            return () => {
+                audio.removeEventListener('loadeddata', setAudioData)
+                audio.removeEventListener('timeupdate', setAudioTime)
+            }
+        } 
+        // Handle TTS
+        else if (ttsConfig && (text || ttsConfig.textOverride)) {
+            const finalText = ttsConfig.textOverride || text
+            // We estimate duration based on text length and rate (average 150 words per minute)
+            const words = finalText.split(' ').length
+            const estimatedDuration = (words / (150 * (ttsConfig.rate || 1))) * 60
+            setDuration(estimatedDuration)
+            setCurrentTime(0)
         }
-        setIsPlaying(!isPlaying)
+    }, [src, ttsConfig, text])
+
+    // Cleanup TTS on unmount
+    useEffect(() => {
+        return () => {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel()
+            }
+        }
+    }, [])
+
+    const togglePlay = () => {
+        if (src) {
+            if (isPlaying) audioRef.current.pause()
+            else audioRef.current.play()
+            setIsPlaying(!isPlaying)
+        } else if (ttsConfig && (text || ttsConfig.textOverride)) {
+            const finalText = ttsConfig.textOverride || text
+            if (isPlaying) {
+                window.speechSynthesis.pause()
+                setIsPlaying(false)
+            } else {
+                if (window.speechSynthesis.paused) {
+                    window.speechSynthesis.resume()
+                } else {
+                    window.speechSynthesis.cancel() // Stop any current speech
+                    const utterance = new SpeechSynthesisUtterance(finalText)
+                    
+                    // Apply config
+                    if (ttsConfig.voiceName) {
+                        const voices = window.speechSynthesis.getVoices()
+                        utterance.voice = voices.find(v => v.name === ttsConfig.voiceName)
+                    }
+                    utterance.rate = ttsConfig.rate || 1
+                    utterance.pitch = ttsConfig.pitch || 1
+                    
+                    utterance.onend = () => setIsPlaying(false)
+                    utterance.onboundary = (event) => {
+                        // Approximate progress based on character index
+                        const progress = (event.charIndex / finalText.length) * duration
+                        setCurrentTime(progress)
+                    }
+                    
+                    utteranceRef.current = utterance
+                    window.speechSynthesis.speak(utterance)
+                }
+                setIsPlaying(true)
+            }
+        }
     }
 
-    const handleTimeUpdate = () => {
-        const audio = audioRef.current
-        if (!audio) return
-        setCurrentTime(audio.currentTime)
-        setProgress(audio.duration ? (audio.currentTime / audio.duration) * 100 : 0)
-    }
-
-    const handleLoadedMetadata = () => {
-        if (audioRef.current) setDuration(audioRef.current.duration)
-    }
-
-    const handleEnded = () => {
+    const stop = () => {
+        if (src) {
+            audioRef.current.pause()
+            audioRef.current.currentTime = 0
+        } else {
+            window.speechSynthesis.cancel()
+            setCurrentTime(0)
+        }
         setIsPlaying(false)
-        setProgress(100)
     }
 
-    const formatTime = (seconds) => {
-        if (!seconds || isNaN(seconds)) return '0:00'
-        const mins = Math.floor(seconds / 60)
-        const secs = Math.floor(seconds % 60)
+    const formatTime = (time) => {
+        if (isNaN(time)) return '0:00'
+        const mins = Math.floor(time / 60)
+        const secs = Math.floor(time % 60)
         return `${mins}:${secs.toString().padStart(2, '0')}`
     }
 
-    const isPlayable = src && !disabled
+    const handleProgressChange = (e) => {
+        const time = Number(e.target.value)
+        audioRef.current.currentTime = time
+        setCurrentTime(time)
+    }
 
     return (
         <div style={{
-            background: 'linear-gradient(135deg, #166534 0%, #22C55E 100%)',
-            padding: '32px',
-            borderRadius: '16px 16px 0 0',
+            backgroundColor: '#F3F4F6', borderRadius: '16px', padding: '16px 20px',
+            display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid #E5E7EB'
         }}>
-            {/* Hidden native audio element */}
-            {src && (
-                <audio
-                    ref={audioRef}
-                    src={src}
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onEnded={handleEnded}
-                    muted={isMuted}
-                />
-            )}
-
-            <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.9)', fontSize: '14px', margin: '0 0 16px', fontWeight: '500' }}>
-                {src ? `🎵 ${title}` : 'No audio available'}
-            </p>
-
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '24px',
-                marginBottom: '24px',
-            }}>
-                {/* Mute Button */}
-                <button
-                    onClick={() => setIsMuted(!isMuted)}
-                    disabled={!isPlayable}
-                    style={{
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        border: 'none',
-                        backgroundColor: 'rgba(255,255,255,0.2)',
-                        cursor: isPlayable ? 'pointer' : 'default',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        opacity: isPlayable ? 1 : 0.4,
-                    }}
-                >
-                    {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                </button>
-
-                {/* Play/Pause Button */}
-                <motion.button
-                    onClick={handlePlayPause}
-                    disabled={!isPlayable}
-                    whileHover={isPlayable ? { scale: 1.05 } : {}}
-                    whileTap={isPlayable ? { scale: 0.95 } : {}}
-                    style={{
-                        width: '72px',
-                        height: '72px',
-                        borderRadius: '50%',
-                        border: 'none',
-                        backgroundColor: 'white',
-                        cursor: isPlayable ? 'pointer' : 'default',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
-                        opacity: isPlayable ? 1 : 0.5,
-                    }}
-                >
-                    {isPlaying ? (
-                        <Pause size={32} style={{ color: '#166534' }} />
-                    ) : (
-                        <Play size={32} style={{ color: '#166534', marginLeft: '4px' }} />
-                    )}
-                </motion.button>
-
-                {/* Placeholder to balance the flex layout */}
-                <div style={{ width: '48px' }} />
-            </div>
-
-            {/* Progress Slider */}
-            <div style={{ marginBottom: '8px' }}>
-                <div style={{
-                    height: '6px',
-                    backgroundColor: 'rgba(255,255,255,0.3)',
-                    borderRadius: '3px',
-                    overflow: 'hidden',
-                }}>
-                    <div style={{
-                        width: `${progress}%`,
-                        height: '100%',
-                        backgroundColor: 'white',
-                        borderRadius: '3px',
-                        transition: 'width 0.1s linear',
-                    }} />
+            <audio ref={audioRef} src={src} preload="metadata" />
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        onClick={togglePlay}
+                        style={{
+                            width: '44px', height: '44px', borderRadius: '50%', border: 'none',
+                            backgroundColor: '#3B82F6', color: 'white', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                            boxShadow: '0 4px 6px rgba(59, 130, 246, 0.2)', transition: 'transform 0.2s'
+                        }}
+                    >
+                        {isPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" style={{ marginLeft: '2px' }} />}
+                    </button>
+                    <button
+                        onClick={stop}
+                        style={{
+                            width: '44px', height: '44px', borderRadius: '50%', border: '1px solid #E5E7EB',
+                            backgroundColor: 'white', color: '#6B7280', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                        }}
+                    >
+                        <Square size={18} fill="#6B7280" />
+                    </button>
                 </div>
-            </div>
 
-            {/* Time stamps */}
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                color: 'rgba(255,255,255,0.8)',
-                fontSize: '13px',
-                fontWeight: '500',
-            }}>
-                <span>{formatTime(currentTime)}</span>
-                <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6B7280', fontWeight: '500' }}>
+                        <span>{formatTime(currentTime)}</span>
+                        <span>{formatTime(duration)}</span>
+                    </div>
+                    <input
+                        type="range"
+                        min="0"
+                        max={duration || 0}
+                        value={currentTime}
+                        onChange={handleProgressChange}
+                        style={{
+                            width: '100%', height: '6px', backgroundColor: '#D1D5DB',
+                            borderRadius: '3px', cursor: 'pointer', accentColor: '#3B82F6'
+                        }}
+                    />
+                </div>
             </div>
         </div>
     )

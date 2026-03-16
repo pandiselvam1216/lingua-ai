@@ -8,7 +8,6 @@ import Dashboard from './pages/Dashboard'
 import Landing from './pages/Landing'
 
 // Lazy loaded pages to optimize initial load time
-const Listening = lazy(() => import('./pages/modules/Listening'))
 const Speaking = lazy(() => import('./pages/modules/Speaking'))
 const Reading = lazy(() => import('./pages/modules/Reading'))
 const Writing = lazy(() => import('./pages/modules/Writing'))
@@ -24,6 +23,8 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
 const StudentManagement = lazy(() => import('./pages/admin/StudentManagement'))
 const Reports = lazy(() => import('./pages/admin/Reports'))
 const QuestionManagement = lazy(() => import('./pages/admin/QuestionManagement'))
+const ListeningManagement = lazy(() => import('./pages/admin/ListeningManagement'))
+const ListeningModulePage = lazy(() => import('./pages/modules/ListeningModulePage'))
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -56,7 +57,7 @@ export default function App() {
 
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="listening" element={<Listening />} />
+          <Route path="listening" element={<ListeningModulePage />} />
           <Route path="speaking" element={<Speaking />} />
           <Route path="reading" element={<Reading />} />
           <Route path="writing" element={<Writing />} />
@@ -69,6 +70,8 @@ export default function App() {
           <Route path="admin/students" element={<StudentManagement />} />
           <Route path="admin/reports" element={<Reports />} />
           <Route path="admin/questions" element={<QuestionManagement />} />
+          <Route path="admin/listening" element={<ListeningManagement />} />
+          <Route path="listening-content" element={<Navigate to="/listening" replace />} />
         </Route>
       </Routes>
     </Suspense>

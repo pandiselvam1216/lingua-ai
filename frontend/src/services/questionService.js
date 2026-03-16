@@ -33,6 +33,7 @@ export async function getModuleQuestions(module) {
         time_limit: item.time_limit || 60,
         word_limit: item.word_limit || 150,
         audio_data: item.audio_data || item.media_url || null,
+        tts_config: item.tts_config || null,
     }));
 
     // Helper to safely cache data — strips large audio blobs to avoid quota errors

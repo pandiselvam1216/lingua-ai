@@ -101,6 +101,7 @@ export default function AdminDashboard() {
         { label: 'Manage Students', path: '/admin/students', icon: Users, color: '#3B82F6' },
         { label: 'View Reports', path: '/admin/reports', icon: BarChart2, color: '#22C55E' },
         { label: 'Question Bank', path: '/admin/questions', icon: BookOpen, color: '#8B5CF6' },
+        { label: 'Listening Module', path: '/admin/listening', icon: Headphones, color: '#F97316' },
     ]
 
     return (

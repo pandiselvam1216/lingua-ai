@@ -7,11 +7,13 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models.user import User, Role
 from app.models.attempt import Attempt, Score
-from app.models.module import Module, Question
+from app.models.module import Module, Question, ListeningModule
 from app.utils.decorators import role_required
+import uuid
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 from sqlalchemy import func
+import json
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -370,8 +372,10 @@ def create_question():
         points=data.get('points', 10),
         time_limit=data.get('time_limit'),
         tags=data.get('tags'),
+        pdf_name=data.get('pdf_name'),
         is_active=data.get('is_active', True),
-        is_published=data.get('is_published', True)  # Default to published so questions appear on user pages
+        is_published=data.get('is_published', True),  # Default to published so questions appear on user pages
+        tts_config=json.dumps(data.get('tts_config')) if data.get('tts_config') else None
     )
     
     db.session.add(question)
@@ -424,6 +428,10 @@ def update_question(question_id):
         question.is_active = data['is_active']
     if 'is_published' in data:
         question.is_published = data['is_published']
+    if 'pdf_name' in data:
+        question.pdf_name = data['pdf_name']
+    if 'tts_config' in data:
+        question.tts_config = json.dumps(data['tts_config']) if data['tts_config'] else None
     
     question.updated_at = datetime.utcnow()
     db.session.commit()
@@ -478,3 +486,85 @@ def get_modules():
     """Get all available modules for question management"""
     modules = Module.query.filter_by(is_active=True).all()
     return jsonify([module.to_dict() for module in modules]), 200
+
+
+# --- Listening Module Content Management ---
+
+@admin_bp.route('/listening', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def admin_get_listening_content():
+    """Get all listening content for management"""
+    content = ListeningModule.query.order_by(ListeningModule.created_at.desc()).all()
+    return jsonify([c.to_dict() for c in content]), 200
+
+
+@admin_bp.route('/listening', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def admin_create_listening_content():
+    """Create new listening content"""
+    data = request.get_json()
+    
+    if not data or not data.get('title') or not data.get('content'):
+        return jsonify({'error': 'Title and content are required'}), 400
+    
+    import json
+    new_item = ListeningModule(
+        id=str(uuid.uuid4()),
+        title=data['title'],
+        content=data['content'],
+        audio_url=data.get('audio_url'),
+        tts_config=json.dumps(data.get('tts_config')) if data.get('tts_config') else None
+    )
+    
+    db.session.add(new_item)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Listening content created successfully',
+        'item': new_item.to_dict()
+    }), 201
+
+
+@admin_bp.route('/listening/<string:item_id>', methods=['PUT'])
+@jwt_required()
+@role_required('admin')
+def admin_update_listening_content(item_id):
+    """Update listening content"""
+    item = db.session.get(ListeningModule, item_id)
+    if not item:
+        return jsonify({'error': 'Content not found'}), 404
+        
+    data = request.get_json()
+    if 'title' in data:
+        item.title = data['title']
+    if 'content' in data:
+        item.content = data['content']
+    if 'audio_url' in data:
+        item.audio_url = data['audio_url']
+    if 'tts_config' in data:
+        import json
+        item.tts_config = json.dumps(data['tts_config']) if data['tts_config'] else None
+        
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Listening content updated successfully',
+        'item': item.to_dict()
+    }), 200
+
+
+@admin_bp.route('/listening/<string:item_id>', methods=['DELETE'])
+@jwt_required()
+@role_required('admin')
+def admin_delete_listening_content(item_id):
+    """Delete listening content"""
+    item = db.session.get(ListeningModule, item_id)
+    if not item:
+        return jsonify({'error': 'Content not found'}), 404
+        
+    db.session.delete(item)
+    db.session.commit()
+    
+    return jsonify({'message': 'Listening content deleted successfully'}), 200

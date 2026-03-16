@@ -10,21 +10,36 @@ export function AuthProvider({ children }) {
     const [sessionStartTime, setSessionStartTime] = useState(null)
 
     useEffect(() => {
-        // Check if user is already logged in (token in localStorage)
-        const token = localStorage.getItem('token')
-        if (token) {
-            // Token exists, assume user is still logged in
-            const email = localStorage.getItem('userEmail')
-            const role = localStorage.getItem('userRole')
-            const fullName = localStorage.getItem('userName')
-            setUser({
-                email,
-                role: { name: role || 'student' },
-                full_name: fullName || email?.split('@')[0]
-            })
-            setSessionStartTime(new Date())
+        const validateToken = async () => {
+            const token = localStorage.getItem('token')
+            if (!token) {
+                setLoading(false)
+                return
+            }
+
+            try {
+                // Verify token with backend
+                const response = await api.get('/auth/me')
+                const userData = response.data.user
+                
+                setUser({
+                    email: userData.email,
+                    role: userData.role,
+                    full_name: userData.full_name
+                })
+                setSessionStartTime(new Date())
+            } catch (err) {
+                console.error('[Auth] Token validation failed:', err)
+                // If it's a 401, clear the stale token
+                if (err.response?.status === 401) {
+                    logout()
+                }
+            } finally {
+                setLoading(false)
+            }
         }
-        setLoading(false)
+
+        validateToken()
     }, [])
 
     useEffect(() => {
