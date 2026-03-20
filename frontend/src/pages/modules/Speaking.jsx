@@ -5,7 +5,6 @@ import { evaluateSpeaking, saveModuleScore } from '../../utils/localScoring'
 import { getModuleQuestions } from '../../services/questionService'
 import ModuleLayout from '../../components/common/ModuleLayout'
 import Modal from '../../components/common/Modal'
-import AudioPlayer from '../../components/common/AudioPlayer'
 
 const SPEAKING_RULES = [
     "Select a speaking prompt from the list to begin.",
@@ -184,13 +183,7 @@ export default function Speaking() {
                         <span style={{ fontSize: '13px', color: '#1E40AF', fontWeight: '500' }}>{totalTime}s</span>
                     </div>
                 </div>
-                <div style={{ marginBottom: '24px' }}>
-                    <AudioPlayer 
-                        ttsConfig={currentPrompt?.tts_config} 
-                        text={currentPrompt?.content}
-                        title="Prompt Narration"
-                    />
-                </div>
+
                 <p style={{ fontSize: '15px', color: '#4B5563', lineHeight: '1.6', marginBottom: '24px' }}>
                     {currentPrompt?.content}
                 </p>

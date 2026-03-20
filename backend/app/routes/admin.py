@@ -41,16 +41,20 @@ def get_analytics():
     # Average score across all attempts
     avg_score = db.session.query(func.avg(Score.total_score)).scalar() or 0
     
-    # Attempts per module
-    modules = Module.query.filter_by(is_active=True).all()
+    # Attempts per module (Optimized query)
+    module_stats_query = db.session.query(
+        Module, 
+        func.count(Attempt.id)
+    ).join(Question, Question.module_id == Module.id)\
+     .join(Attempt, Attempt.question_id == Question.id)\
+     .filter(Attempt.is_completed == True)\
+     .group_by(Module.id).all()
+    
     module_stats = []
-    for module in modules:
-        attempts = Attempt.query.join(Attempt.question).filter(
-            Attempt.is_completed == True
-        ).count()
+    for module, count in module_stats_query:
         module_stats.append({
             'module': module.to_dict(),
-            'attempts': attempts
+            'attempts': count
         })
     
     # Recent activity (last 30 days)
@@ -59,6 +63,29 @@ def get_analytics():
         Attempt.is_completed == True,
         Attempt.completed_at >= month_ago
     ).count()
+
+    # Generate real chart data (attempts per day for the last 7 days)
+    chart_data = []
+    for i in range(6, -1, -1):
+        day = datetime.utcnow().date() - timedelta(days=i)
+        count = Attempt.query.filter(
+            func.date(Attempt.completed_at) == day,
+            Attempt.is_completed == True
+        ).count()
+        chart_data.append({
+            'label': day.strftime('%a'),
+            'value': count
+        })
+    
+    # New students this month
+    new_students = User.query.join(Role).filter(
+        Role.name == 'student',
+        User.created_at >= month_ago
+    ).count()
+
+    # Completion rate
+    all_attempts = Attempt.query.count()
+    completion_rate = round((total_attempts / all_attempts * 100), 1) if all_attempts > 0 else 0
     
     return jsonify({
         'users': {
@@ -66,14 +93,21 @@ def get_analytics():
             'students': total_students,
             'teachers': total_teachers,
             'admins': total_admins,
-            'active_this_week': active_students
+            'active_this_week': active_students,
+            'new_students_this_month': new_students
         },
         'attempts': {
             'total': total_attempts,
             'recent_month': recent_attempts,
-            'average_score': round(float(avg_score), 1)
+            'average_score': round(float(avg_score), 1),
+            'completion_rate': completion_rate
         },
-        'modules': module_stats
+        'modules': module_stats,
+        'chart': {
+            'data7': chart_data,
+            'data30': [], 
+            'data90': []
+        }
     }), 200
 
 

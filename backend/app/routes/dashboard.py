@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from app import db
 from app.models.user import User
-from app.models.module import Module
+from app.models.module import Module, Question
 from app.models.attempt import Attempt, Score
 from app.utils.decorators import role_required
 
@@ -19,7 +19,7 @@ dashboard_bp = Blueprint('dashboard', __name__)
 @jwt_required()
 def get_stats():
     """Get dashboard statistics for current user"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     
     # Total attempts
     total_attempts = Attempt.query.filter_by(user_id=user_id, is_completed=True).count()
@@ -41,9 +41,6 @@ def get_stats():
     # Module breakdown
     modules = Module.query.filter_by(is_active=True).order_by(Module.order).all()
     module_stats = []
-    
-    from app.models.question import Question
-    
     # Query module stats using a single database query grouped by module ID
     module_stats_data = db.session.query(
         Question.module_id,
@@ -87,7 +84,7 @@ def get_stats():
 @jwt_required()
 def get_readiness():
     """Get overall readiness score"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     
     modules = Module.query.filter_by(is_active=True).all()
     
@@ -143,7 +140,7 @@ def get_readiness():
 @jwt_required()
 def get_activity():
     """Get recent activity and trends"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     days = request.args.get('days', 30, type=int)
     
     start_date = datetime.utcnow() - timedelta(days=days)

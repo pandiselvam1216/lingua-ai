@@ -5,7 +5,6 @@ import api from '../../services/api'
 import { getModuleQuestions } from '../../services/questionService'
 import { saveModuleScore } from '../../utils/localScoring'
 import ModuleLayout from '../../components/common/ModuleLayout'
-import AudioPlayer from '../../components/common/AudioPlayer'
 
 const READING_RULES = [
     "Read the passage carefully before attempting the questions.",
@@ -187,13 +186,7 @@ export default function Reading() {
                             <button onClick={() => setViewMode('text')} className="btn" style={{ background: viewMode === 'text' ? '#F5F3FF' : 'transparent', color: viewMode === 'text' ? '#8B5CF6' : '#6B7280', padding: '4px 12px', fontSize: '12px' }}>Text</button>
                             {pdfUrl && <button onClick={() => setViewMode('pdf')} className="btn" style={{ background: viewMode === 'pdf' ? '#F5F3FF' : 'transparent', color: viewMode === 'pdf' ? '#8B5CF6' : '#6B7280', padding: '4px 12px', fontSize: '12px' }}>PDF</button>}
                             
-                            <div style={{ flex: 1, minWidth: '200px' }}>
-                                <AudioPlayer 
-                                    ttsConfig={currentPassage?.tts_config}
-                                    text={currentPassage?.passage_text || currentPassage?.content}
-                                    title="Narrate Passage"
-                                />
-                            </div>
+
 
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button onClick={() => pdfInputRef.current?.click()} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280' }}><Upload size={16} /></button>

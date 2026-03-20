@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
     Users, UserCheck, BookOpen, Trophy, TrendingUp, Activity,
-    Award, Clock, ChevronRight, BarChart2
+    Award, Clock, ChevronRight, BarChart2, Headphones
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '../../services/api'
@@ -41,10 +41,10 @@ export default function AdminDashboard() {
                     completion_rate: data.attempts?.completion_rate || 0
                 },
                 modules: data.modules || [],
-                chart: data.chart || {
-                    data7: generateMockChartData(7),
-                    data30: generateMockChartData(30),
-                    data90: generateMockChartData(90)
+                chart: {
+                    data7: (data.chart?.data7 && data.chart.data7.length > 0) ? data.chart.data7 : generateMockChartData(7),
+                    data30: (data.chart?.data30 && data.chart.data30.length > 0) ? data.chart.data30 : generateMockChartData(30),
+                    data90: (data.chart?.data90 && data.chart.data90.length > 0) ? data.chart.data90 : generateMockChartData(90)
                 }
             })
         } catch (error) {
@@ -287,6 +287,50 @@ export default function AdminDashboard() {
                                 </div>
                             )
                         })}
+                    </div>
+                </motion.div>
+
+                {/* Module Breakdown */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.35 }}
+                    style={{
+                        backgroundColor: 'white',
+                        borderRadius: '16px',
+                        padding: '24px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        gridColumn: 'span 1'
+                    }}
+                >
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <BookOpen size={20} style={{ color: '#8B5CF6' }} /> Module Attempts
+                    </h3>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {analytics?.modules?.slice(0, 8).map((mod, idx) => {
+                            const total = analytics.attempts.total || 1;
+                            const percentage = Math.round((mod.attempts / total) * 100);
+                            
+                            return (
+                                <div key={mod.module.slug}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '14px' }}>
+                                        <span style={{ fontWeight: '500', color: '#374151' }}>{mod.module.name}</span>
+                                        <span style={{ color: '#6B7280' }}>{mod.attempts}</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '8px', backgroundColor: '#F3F4F6', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${Math.max(percentage, 5)}%` }}
+                                            style={{ height: '100%', background: `linear-gradient(90deg, #8B5CF6 0%, #A78BFA 100%)` }}
+                                        />
+                                    </div>
+                                </div>
+                            )
+                        })}
+                        {(!analytics?.modules || analytics.modules.length === 0) && (
+                            <p style={{ fontSize: '14px', color: '#9CA3AF', textAlign: 'center', padding: '20px 0' }}>No activity data yet.</p>
+                        )}
                     </div>
                 </motion.div>
 
