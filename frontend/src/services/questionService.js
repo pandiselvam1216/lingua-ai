@@ -33,6 +33,7 @@ export async function getModuleQuestions(module) {
         time_limit: item.time_limit || 60,
         word_limit: item.word_limit || 150,
         audio_data: item.audio_data || item.media_url || null,
+        sub_module: item.sub_module || null,
         tts_config: item.tts_config || null,
     }));
 

@@ -190,10 +190,10 @@ export const evaluateSpeaking = (transcript, timeElapsed, targetText = "") => {
 
 // --- Scoring Logic: Writing ---
 
-export const evaluateWriting = async (text, timeElapsed) => {
+export const evaluateWriting = async (text, timeElapsed, promptTitle = "", promptContent = "") => {
     try {
         // 1. Try Deep AI Analysis first (Indian English Context)
-        const aiEvaluation = await evaluateWritingAI(text)
+        const aiEvaluation = await evaluateWritingAI(text, promptTitle, promptContent)
         
         if (aiEvaluation) {
             saveModuleScore('writing', aiEvaluation.score, timeElapsed)
