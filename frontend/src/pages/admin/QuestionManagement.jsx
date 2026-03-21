@@ -43,6 +43,24 @@ export default function QuestionManagement() {
     const [alertConfig, setAlertConfig] = useState({ isOpen: false })
     const [availableVoices, setAvailableVoices] = useState([])
     const [sourceType, setSourceType] = useState('file') // 'file' or 'tts'
+    const [listeningModules, setListeningModules] = useState([])
+
+    const LISTENING_CATEGORIES = [
+        { id: 'conversations', name: 'Conversations' },
+        { id: 'speeches', name: 'Speeches' },
+        { id: 'lectures', name: 'Lectures' },
+        { id: 'stories', name: 'Stories' },
+        { id: 'news', name: 'News' },
+        { id: 'instructions', name: 'Instructions' },
+        { id: 'interviews', name: 'Interviews' },
+        { id: 'discussions', name: 'Discussions' },
+        { id: 'presentations', name: 'Presentations' },
+        { id: 'podcasts', name: 'Podcasts' },
+        { id: 'main-ideas', name: 'Main Ideas' },
+        { id: 'specific-details', name: 'Specific Details' },
+        { id: 'tone-emotion', name: 'Tone & Emotion' },
+        { id: 'inference', name: 'Inference' }
+    ]
 
     const showAlert = (title, message, theme = 'info') => {
         setAlertConfig({ isOpen: true, title, message, theme, type: 'alert' })
@@ -54,10 +72,12 @@ export default function QuestionManagement() {
         difficulty: 1,
         options: [{ text: '', value: 'A' }, { text: '', value: 'B' }, { text: '', value: 'C' }, { text: '', value: 'D' }],
         correct_answer: 'A',
-        explanation: '',
+         explanation: '',
         is_published: true,  // Default to published so questions appear on user pages
         audio_data: null,  // base64 data URL for listening audio
         pdf_name: null,    // uploaded
+        category: 'conversations',
+        listening_module_id: '',
         tts_config: {
             voiceName: '',
             rate: 1,
@@ -98,32 +118,41 @@ export default function QuestionManagement() {
         }
     }
 
+    const normalizeQuestionSource = (item) => ({
+        id: item.id,
+        module_id: item.module_id,
+        listening_module_id: item.listening_module_id || '',
+        category: item.category || 'conversations',
+        title: item.title,
+        content: item.content,
+        difficulty: item.difficulty || 1,
+        options: item.options,
+        correct_answer: item.correct_answer,
+        explanation: item.explanation,
+        is_published: item.is_published || false,
+        is_active: item.is_active !== false,
+        type: item.options ? 'mcq' : 'prompt',
+        audio_data: item.media_url || null,
+        pdf_name: item.pdf_name || null,
+        tts_config: item.tts_config || null
+    })
+
     const fetchQuestions = async () => {
         setLoading(true)
         try {
+            if (activeModule === 'listening') {
+                const lmResp = await api.get('/admin/listening-modules')
+                setListeningModules(lmResp.data.modules || [])
+            }
+
             const response = await api.get(`/admin/questions?module=${activeModule}`)
-            const normalized = (response.data.questions || []).map(item => ({
-                id: item.id,
-                module_id: item.module_id,
-                title: item.title,
-                content: item.content,
-                difficulty: item.difficulty || 1,
-                options: item.options,
-                correct_answer: item.correct_answer,
-                explanation: item.explanation,
-                is_published: item.is_published || false,
-                is_active: item.is_active !== false,
-                type: item.options ? 'mcq' : 'prompt',
-                audio_data: item.media_url || null,
-                pdf_name: item.pdf_name || null,
-                tts_config: item.tts_config || null
-            }))
+            const normalized = (response.data.questions || []).map(item => normalizeQuestionSource(item))
             setQuestions(normalized)
             setUsingLocalStorage(false)
         } catch (err) {
             console.error('Failed to fetch questions:', err)
-            // Fallback to localStorage if API fails
-            setQuestions(getLocalQuestions())
+            const local = getLocalQuestions()
+            setQuestions(local)
             setUsingLocalStorage(true)
         }
         setLoading(false)
@@ -142,6 +171,8 @@ export default function QuestionManagement() {
                 is_published: question.is_published || false,
                 audio_data: question.audio_data || question.media_url || null,
                 pdf_name: question.pdf_name || null,
+                category: question.category || 'conversations',
+                listening_module_id: question.listening_module_id || '',
                 tts_config: question.tts_config || {
                     voiceName: availableVoices[0]?.name || '',
                     rate: 1,
@@ -161,6 +192,8 @@ export default function QuestionManagement() {
                 is_published: true,
                 audio_data: null,
                 pdf_name: null,
+                category: 'conversations',
+                listening_module_id: '',
                 tts_config: {
                     voiceName: availableVoices[0]?.name || '',
                     rate: 1,
@@ -276,7 +309,7 @@ export default function QuestionManagement() {
         setSaveSuccess(false)
 
         const payload = {
-            module_id: null,  // Will be set from active module
+            module_id: editingQuestion?.module_id || null,  // Will be set from active module for new questions
             content: formData.content,
             title: formData.title || null,
             difficulty: formData.difficulty,
@@ -285,6 +318,8 @@ export default function QuestionManagement() {
             explanation: formData.explanation || null,
             is_published: formData.is_published,
             is_active: true,
+            category: activeModule === 'listening' ? formData.category : null,
+            listening_module_id: (activeModule === 'listening' && formData.listening_module_id) ? formData.listening_module_id : null,
             media_url: sourceType === 'file' 
                 ? (formData.audio_data?.startsWith('data:') 
                     ? formData.audio_data   // base64 file upload — keep as-is
@@ -296,8 +331,13 @@ export default function QuestionManagement() {
         try {
             if (editingQuestion) {
                 // Update existing question
-                await api.put(`/admin/questions/${editingQuestion.id}`, payload)
-                setQuestions(prev => prev.map(q => q.id === editingQuestion.id ? { ...q, ...payload, is_published: formData.is_published } : q))
+                const response = await api.put(`/admin/questions/${editingQuestion.id}`, payload)
+                const updated = normalizeQuestionSource(response.data.question)
+                setQuestions(prev => {
+                    const result = prev.map(q => q.id === updated.id ? updated : q)
+                    if (usingLocalStorage) localStorage.setItem(`neuralingua_questions_${activeModule}`, JSON.stringify(result))
+                    return result
+                })
             } else {
                 // Create new question - need to get module_id first
                 const moduleResponse = await api.get(`/admin/modules`)
@@ -313,7 +353,12 @@ export default function QuestionManagement() {
 
                 payload.module_id = module.id
                 const response = await api.post(`/admin/questions`, payload)
-                setQuestions(prev => [response.data.question, ...prev])
+                const created = normalizeQuestionSource(response.data.question)
+                setQuestions(prev => {
+                    const result = [created, ...prev]
+                    if (usingLocalStorage) localStorage.setItem(`neuralingua_questions_${activeModule}`, JSON.stringify(result))
+                    return result
+                })
             }
             setSaveSuccess(true)
             setTimeout(() => setSaveSuccess(false), 3000)
@@ -610,6 +655,24 @@ export default function QuestionManagement() {
                                         }}>
                                             {question.difficulty === 1 ? 'Easy' : question.difficulty === 2 ? 'Medium' : 'Hard'}
                                         </span>
+                                        {activeModule === 'listening' && question.category && (
+                                            <span style={{
+                                                padding: '4px 10px',
+                                                borderRadius: '6px',
+                                                backgroundColor: '#EDE9FE',
+                                                color: '#7C3AED',
+                                                fontSize: '12px',
+                                                fontWeight: '600',
+                                                textTransform: 'capitalize'
+                                            }}>
+                                                {question.category}
+                                            </span>
+                                        )}
+                                        {activeModule === 'listening' && question.listening_module_id && (
+                                            <span style={{ fontSize: '12px', color: '#6B7280', fontStyle: 'italic' }}>
+                                                Linked to: {listeningModules.find(m => m.id === question.listening_module_id)?.title || 'Selected Passage'}
+                                            </span>
+                                        )}
                                         <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
                                             Answer: {question.correct_answer}
                                         </span>
@@ -758,8 +821,8 @@ export default function QuestionManagement() {
 
                             <form onSubmit={handleSubmit}>
 
-                                {/* Title — Reading & Speaking/Writing prompts */}
-                                {(activeModule === 'reading' || activeModule === 'speaking' || activeModule === 'writing') && (
+                                {/* Title — Reading, Listening & Speaking/Writing prompts */}
+                                {(activeModule === 'reading' || activeModule === 'listening' || activeModule === 'speaking' || activeModule === 'writing') && (
                                     <div style={{ marginBottom: '20px' }}>
                                         <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
                                             Title
@@ -779,6 +842,55 @@ export default function QuestionManagement() {
                                                 fontFamily: 'inherit',
                                             }}
                                         />
+                                    </div>
+                                )}
+
+                                {/* Listening Fields: Category & Module Link */}
+                                {activeModule === 'listening' && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                                                Category
+                                            </label>
+                                            <select
+                                                value={formData.category}
+                                                onChange={(e) => setFormData(p => ({ ...p, category: e.target.value }))}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '12px 14px',
+                                                    borderRadius: '10px',
+                                                    border: '2px solid #E5E7EB',
+                                                    fontSize: '14px',
+                                                    backgroundColor: 'white'
+                                                }}
+                                            >
+                                                {LISTENING_CATEGORIES.map(cat => (
+                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                                                Link to Audio Passage
+                                            </label>
+                                            <select
+                                                value={formData.listening_module_id}
+                                                onChange={(e) => setFormData(p => ({ ...p, listening_module_id: e.target.value }))}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '12px 14px',
+                                                    borderRadius: '10px',
+                                                    border: '2px solid #E5E7EB',
+                                                    fontSize: '14px',
+                                                    backgroundColor: 'white'
+                                                }}
+                                            >
+                                                <option value="">-- No passage (Short Item) --</option>
+                                                {listeningModules.map(lm => (
+                                                    <option key={lm.id} value={lm.id}>{lm.title}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
                                 )}
 

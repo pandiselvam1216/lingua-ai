@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     Headphones, Plus, Edit2, Trash2, X, Check, Search,
-    Upload, Play, Square, Pause, Save, AlertCircle, Volume2, Mic
+    Upload, Play, Square, Pause, Save, AlertCircle, Volume2, Mic,
+    Layers
 } from 'lucide-react'
 import listeningService from '../../services/listeningService'
 import Modal from '../../components/common/Modal'
@@ -23,6 +24,7 @@ export default function ListeningManagement() {
     const [formData, setFormData] = useState({
         title: '',
         content: '',
+        category: 'conversations',
         audio_url: '',
         tts_config: {
             voiceName: '',
@@ -69,6 +71,7 @@ export default function ListeningManagement() {
             setFormData({
                 title: item.title,
                 content: item.content,
+                category: item.category || 'conversations',
                 audio_url: item.audio_url || '',
                 tts_config: item.tts_config || {
                     voiceName: availableVoices[0]?.name || '',
@@ -82,6 +85,7 @@ export default function ListeningManagement() {
             setFormData({
                 title: '',
                 content: '',
+                category: 'conversations',
                 audio_url: '',
                 tts_config: {
                     voiceName: availableVoices[0]?.name || '',
@@ -372,6 +376,33 @@ export default function ListeningManagement() {
                                         placeholder="Enter the full text of the listening passage here..."
                                         style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #E5E7EB', outline: 'none', fontSize: '14px', minHeight: '120px', resize: 'vertical', fontFamily: 'inherit' }}
                                     />
+                                </div>
+
+                                <div style={{ marginBottom: '24px' }}>
+                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Category</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <Layers size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
+                                        <select
+                                            value={formData.category}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                                            style={{ width: '100%', padding: '12px 14px 12px 44px', borderRadius: '10px', border: '1.5px solid #E5E7EB', outline: 'none', fontSize: '14px', appearance: 'none', backgroundColor: 'white' }}
+                                        >
+                                            <option value="conversations">Conversations</option>
+                                            <option value="speeches">Speeches</option>
+                                            <option value="lectures">Lectures</option>
+                                            <option value="stories">Stories</option>
+                                            <option value="news">News</option>
+                                            <option value="instructions">Instructions</option>
+                                            <option value="interviews">Interviews</option>
+                                            <option value="discussions">Discussions</option>
+                                            <option value="presentations">Presentations</option>
+                                            <option value="podcasts">Podcasts</option>
+                                            <option value="main-ideas">Main Ideas</option>
+                                            <option value="specific-details">Specific Details</option>
+                                            <option value="tone-emotion">Tone & Emotion</option>
+                                            <option value="inference">Inference</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div style={{ marginBottom: '24px' }}>

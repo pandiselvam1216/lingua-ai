@@ -409,6 +409,8 @@ def create_question():
         pdf_name=data.get('pdf_name'),
         is_active=data.get('is_active', True),
         is_published=data.get('is_published', True),  # Default to published so questions appear on user pages
+        listening_module_id=data.get('listening_module_id'),
+        category=data.get('category'),
         tts_config=json.dumps(data.get('tts_config')) if data.get('tts_config') else None
     )
     
@@ -464,6 +466,10 @@ def update_question(question_id):
         question.is_published = data['is_published']
     if 'pdf_name' in data:
         question.pdf_name = data['pdf_name']
+    if 'listening_module_id' in data:
+        question.listening_module_id = data['listening_module_id']
+    if 'category' in data:
+        question.category = data['category']
     if 'tts_config' in data:
         question.tts_config = json.dumps(data['tts_config']) if data['tts_config'] else None
     
@@ -525,12 +531,13 @@ def get_modules():
 # --- Listening Module Content Management ---
 
 @admin_bp.route('/listening', methods=['GET'])
+@admin_bp.route('/listening-modules', methods=['GET'])
 @jwt_required()
 @role_required('admin')
 def admin_get_listening_content():
     """Get all listening content for management"""
     content = ListeningModule.query.order_by(ListeningModule.created_at.desc()).all()
-    return jsonify([c.to_dict() for c in content]), 200
+    return jsonify({'modules': [c.to_dict() for c in content]}), 200
 
 
 @admin_bp.route('/listening', methods=['POST'])
@@ -548,6 +555,7 @@ def admin_create_listening_content():
         id=str(uuid.uuid4()),
         title=data['title'],
         content=data['content'],
+        category=data.get('category'),
         audio_url=data.get('audio_url'),
         tts_config=json.dumps(data.get('tts_config')) if data.get('tts_config') else None
     )
@@ -575,6 +583,8 @@ def admin_update_listening_content(item_id):
         item.title = data['title']
     if 'content' in data:
         item.content = data['content']
+    if 'category' in data:
+        item.category = data['category']
     if 'audio_url' in data:
         item.audio_url = data['audio_url']
     if 'tts_config' in data:

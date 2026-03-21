@@ -25,9 +25,9 @@ const listeningService = {
 
     // User Content Access
     getPublicContent: async () => {
-        // For now using the same admin list for simplicity, or we can add a public route
-        const response = await api.get('/admin/listening') 
-        return response.data
+        // Use the student-facing endpoint instead of the admin-facing one for students
+        const response = await api.get('/listening/modules') 
+        return response.data.modules || []
     },
 
     // Audio Upload to Supabase Storage

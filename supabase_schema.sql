@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.listening_modules (
     id UUID PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     content TEXT NOT NULL,
+    category VARCHAR(100),
     audio_url TEXT,
     tts_config TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -69,6 +70,7 @@ CREATE TABLE IF NOT EXISTS public.questions (
     id SERIAL PRIMARY KEY,
     module_id INTEGER REFERENCES public.modules(id) ON DELETE CASCADE,
     type VARCHAR(50) NOT NULL,
+    category VARCHAR(100),
     title VARCHAR(200),
     content TEXT NOT NULL,
     media_url TEXT,
