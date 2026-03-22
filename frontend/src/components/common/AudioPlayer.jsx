@@ -26,12 +26,12 @@ export default function AudioPlayer({ src, ttsConfig, text }) {
                 audio.removeEventListener('timeupdate', setAudioTime)
             }
         } 
-        // Handle TTS
-        else if (ttsConfig && (text || ttsConfig.textOverride)) {
-            const finalText = ttsConfig.textOverride || text
+        // Handle TTS fallback if no source URL is provided
+        else if (text) {
             // We estimate duration based on text length and rate (average 150 words per minute)
-            const words = finalText.split(' ').length
-            const estimatedDuration = (words / (150 * (ttsConfig.rate || 1))) * 60
+            const rate = ttsConfig?.rate || 1
+            const words = text.split(' ').length
+            const estimatedDuration = (words / (150 * rate)) * 60
             setDuration(estimatedDuration)
             setCurrentTime(0)
         }
@@ -51,8 +51,7 @@ export default function AudioPlayer({ src, ttsConfig, text }) {
             if (isPlaying) audioRef.current.pause()
             else audioRef.current.play()
             setIsPlaying(!isPlaying)
-        } else if (ttsConfig && (text || ttsConfig.textOverride)) {
-            const finalText = ttsConfig.textOverride || text
+        } else if (text) {
             if (isPlaying) {
                 window.speechSynthesis.pause()
                 setIsPlaying(false)
@@ -61,20 +60,28 @@ export default function AudioPlayer({ src, ttsConfig, text }) {
                     window.speechSynthesis.resume()
                 } else {
                     window.speechSynthesis.cancel() // Stop any current speech
-                    const utterance = new SpeechSynthesisUtterance(finalText)
+                    const utterance = new SpeechSynthesisUtterance(text)
                     
-                    // Apply config
-                    if (ttsConfig.voiceName) {
-                        const voices = window.speechSynthesis.getVoices()
-                        utterance.voice = voices.find(v => v.name === ttsConfig.voiceName)
+                    // Apply config if provided
+                    if (ttsConfig) {
+                        if (ttsConfig.voiceName) {
+                            const voices = window.speechSynthesis.getVoices()
+                            utterance.voice = voices.find(v => v.name === ttsConfig.voiceName)
+                        }
+                        utterance.rate = ttsConfig.rate || 1
+                        utterance.pitch = ttsConfig.pitch || 1
+                    } else {
+                        utterance.rate = 1
+                        utterance.pitch = 1
                     }
-                    utterance.rate = ttsConfig.rate || 1
-                    utterance.pitch = ttsConfig.pitch || 1
                     
-                    utterance.onend = () => setIsPlaying(false)
+                    utterance.onend = () => {
+                        setIsPlaying(false)
+                        setCurrentTime(0)
+                    }
                     utterance.onboundary = (event) => {
-                        // Approximate progress based on character index
-                        const progress = (event.charIndex / finalText.length) * duration
+                        // Approximate progress based on character index for better user feedback
+                        const progress = (event.charIndex / text.length) * duration
                         setCurrentTime(progress)
                     }
                     

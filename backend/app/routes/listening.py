@@ -6,7 +6,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
-from app.models.module import Module, Question
+from app.models.module import Module, Question, ListeningModule
 from app.models.attempt import Attempt, Score
 
 listening_bp = Blueprint('listening', __name__)
@@ -130,4 +130,13 @@ def get_attempts():
     
     return jsonify({
         'attempts': [a.to_dict() for a in attempts]
+    }), 200
+@listening_bp.route('/modules', methods=['GET'])
+@jwt_required()
+def get_listening_modules():
+    """Get all listening modules (passages/topics) for students"""
+    modules = ListeningModule.query.order_by(ListeningModule.created_at.desc()).all()
+    return jsonify({
+        'modules': [m.to_dict() for m in modules],
+        'total': len(modules)
     }), 200

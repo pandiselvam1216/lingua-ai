@@ -56,9 +56,13 @@ class ListeningModule(db.Model):
     id = db.Column(db.String(36), primary_key=True) # UUID as string for SQLite compatibility if needed, but the plan says UUID
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(100), nullable=True) # Category like 'Conversations', 'Lectures', etc.
     audio_url = db.Column(db.Text, nullable=True) # Optional if TTS is used
     tts_config = db.Column(db.Text, nullable=True) # JSON string for voice, rate, pitch
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship to questions
+    questions = db.relationship('Question', backref='listening_module', lazy='dynamic')
     
     def to_dict(self):
         import json
@@ -66,6 +70,7 @@ class ListeningModule(db.Model):
             'id': self.id,
             'title': self.title,
             'content': self.content,
+            'category': self.category,
             'audio_url': self.audio_url,
             'tts_config': json.loads(self.tts_config) if self.tts_config else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
@@ -78,9 +83,11 @@ class Question(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     module_id = db.Column(db.Integer, db.ForeignKey('modules.id'), nullable=False)
+    listening_module_id = db.Column(db.String(36), db.ForeignKey('listening_modules.id'), nullable=True) # Optional link to a specific passage
     
     # Question content
     type = db.Column(db.String(50), nullable=False)  # 'mcq', 'short_answer', 'essay', 'audio', 'passage', 'speaking_prompt'
+    category = db.Column(db.String(100), nullable=True) # Subsection like 'Conversations', 'Tone & Emotion', etc.
     title = db.Column(db.String(200))
     content = db.Column(db.Text, nullable=False)  # Question text or prompt
     
@@ -120,7 +127,9 @@ class Question(db.Model):
         data = {
             'id': self.id,
             'module_id': self.module_id,
+            'listening_module_id': self.listening_module_id,
             'type': self.type,
+            'category': self.category,
             'title': self.title,
             'content': self.content,
             'media_url': self.media_url,

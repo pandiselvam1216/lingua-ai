@@ -24,6 +24,8 @@ export async function getModuleQuestions(module) {
     // Helper to format API data consistently
     const formatData = (items) => items.map(item => ({
         id: item.id,
+        category: item.category || null,
+        listening_module_id: item.listening_module_id || null,
         content: item.content || item.passage_text || '',
         title: item.title || item.content?.substring(0, 60) || 'Untitled',
         difficulty: item.difficulty || 1,
