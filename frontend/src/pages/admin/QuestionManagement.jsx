@@ -279,6 +279,22 @@ export default function QuestionManagement() {
         setSaveError('')
         setSaveSuccess(false)
 
+        if (activeModule === 'writing') {
+            if (titleLower.includes('email')) derivedSubModule = 'email'
+            else if (titleLower.includes('essay')) derivedSubModule = 'essay'
+            else if (titleLower.includes('letter')) derivedSubModule = 'letter'
+            else if (titleLower.includes('paragraph')) derivedSubModule = 'paragraph'
+            else if (titleLower.includes('dialogue')) derivedSubModule = 'dialogue'
+            else if (titleLower.includes('report')) derivedSubModule = 'report'
+        } else if (activeModule === 'grammar') {
+            if (titleLower.includes('tense')) derivedSubModule = 'tense'
+            else if (titleLower.includes('article')) derivedSubModule = 'articles'
+            else if (titleLower.includes('preposition')) derivedSubModule = 'prepositions'
+            else if (titleLower.includes('conjunction')) derivedSubModule = 'conjunction'
+            else if (titleLower.includes('pronoun')) derivedSubModule = 'pronoun'
+            else if (titleLower.includes('modal')) derivedSubModule = 'modal_verbs'
+        }
+
         const payload = {
             module_id: null,  // Will be set from active module
             content: formData.content,
@@ -295,7 +311,7 @@ export default function QuestionManagement() {
                     ? formData.audio_data   // base64 file upload — keep as-is
                     : convertDriveUrl(formData.audio_data) || null)
                 : null,
-            sub_module: activeModule === 'writing' ? formData.sub_module : null,
+            sub_module: (activeModule === 'writing' || activeModule === 'grammar') ? derivedSubModule || formData.sub_module : null,
             tts_config: sourceType === 'tts' ? formData.tts_config : null,
         }
 
@@ -619,17 +635,18 @@ export default function QuestionManagement() {
                                         <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
                                             Answer: {question.correct_answer}
                                         </span>
-                                        {activeModule === 'writing' && question.sub_module && (
+                                        {(activeModule === 'writing' || activeModule === 'grammar') && question.sub_module && (
                                             <span style={{
                                                 padding: '4px 10px',
                                                 borderRadius: '6px',
-                                                backgroundColor: '#F5F3FF',
-                                                color: '#7C3AED',
-                                                fontSize: '12px',
-                                                fontWeight: '600',
-                                                textTransform: 'uppercase'
+                                                backgroundColor: activeModule === 'grammar' ? '#FEE2E2' : '#F5F3FF',
+                                                color: activeModule === 'grammar' ? '#EF4444' : '#7C3AED',
+                                                fontSize: '11px',
+                                                fontWeight: '700',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em'
                                             }}>
-                                                {question.sub_module}
+                                                {question.sub_module.replace('_', ' ')}
                                             </span>
                                         )}
                                     </div>
@@ -797,6 +814,13 @@ export default function QuestionManagement() {
                                                     else if (valLower.includes('paragraph')) autoSub = 'paragraph';
                                                     else if (valLower.includes('dialogue')) autoSub = 'dialogue';
                                                     else if (valLower.includes('report')) autoSub = 'report';
+                                                } else if (activeModule === 'grammar') {
+                                                    if (valLower.includes('tense')) autoSub = 'tense';
+                                                    else if (valLower.includes('article')) autoSub = 'articles';
+                                                    else if (valLower.includes('preposition')) autoSub = 'prepositions';
+                                                    else if (valLower.includes('conjunction')) autoSub = 'conjunction';
+                                                    else if (valLower.includes('pronoun')) autoSub = 'pronoun';
+                                                    else if (valLower.includes('modal')) autoSub = 'modal_verbs';
                                                 }
                                                 setFormData(p => ({ ...p, title: val, sub_module: autoSub }))
                                             }}
@@ -950,6 +974,33 @@ export default function QuestionManagement() {
                                             <option value="paragraph">Paragraph Writing</option>
                                             <option value="dialogue">Dialogue Writing</option>
                                             <option value="report">Report Writing</option>
+                                        </select>
+                                    </div>
+                                )}
+
+                                {activeModule === 'grammar' && (
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                                            Grammar Topic
+                                        </label>
+                                        <select
+                                            value={formData.sub_module}
+                                            onChange={(e) => setFormData(p => ({ ...p, sub_module: e.target.value }))}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 14px',
+                                                borderRadius: '10px',
+                                                border: '2px solid #E5E7EB',
+                                                fontSize: '14px',
+                                                backgroundColor: 'white',
+                                            }}
+                                        >
+                                            <option value="tense">Tense</option>
+                                            <option value="articles">Articles</option>
+                                            <option value="prepositions">Prepositions</option>
+                                            <option value="conjunction">Conjunction</option>
+                                            <option value="pronoun">Pronoun</option>
+                                            <option value="modal_verbs">Modal Verbs</option>
                                         </select>
                                     </div>
                                 )}

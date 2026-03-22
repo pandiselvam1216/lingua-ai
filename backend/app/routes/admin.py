@@ -409,6 +409,8 @@ def create_question():
         pdf_name=data.get('pdf_name'),
         is_active=data.get('is_active', True),
         is_published=data.get('is_published', True),  # Default to published so questions appear on user pages
+        sub_module=data.get('sub_module'),
+        word_limit=data.get('word_limit', 150),
         tts_config=json.dumps(data.get('tts_config')) if data.get('tts_config') else None
     )
     
@@ -464,6 +466,10 @@ def update_question(question_id):
         question.is_published = data['is_published']
     if 'pdf_name' in data:
         question.pdf_name = data['pdf_name']
+    if 'sub_module' in data:
+        question.sub_module = data['sub_module']
+    if 'word_limit' in data:
+        question.word_limit = data['word_limit']
     if 'tts_config' in data:
         question.tts_config = json.dumps(data['tts_config']) if data['tts_config'] else None
     

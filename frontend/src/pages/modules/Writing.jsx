@@ -82,7 +82,7 @@ export default function Writing() {
         try {
             const result = await evaluateWriting(essay, timeElapsed, currentPrompt?.title, currentPrompt?.content)
             const aiFeedback = await getAIWritingFeedback(essay, currentPrompt?.title || 'General Writing', result.suggestions?.length || 0)
-            
+
             if (aiFeedback) result.aiFeedback = aiFeedback
             setFeedback(result)
 
@@ -114,10 +114,10 @@ export default function Writing() {
             <div className="page-container" style={{ padding: '40px 32px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
                 {/* Header Section */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
-                    <button 
+                    <button
                         onClick={() => window.location.href = '/dashboard'}
-                        style={{ 
-                            width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'white', 
+                        style={{
+                            width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'white',
                             border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             cursor: 'pointer', color: '#6B7280', transition: 'all 0.2s ease',
                             boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
@@ -146,10 +146,10 @@ export default function Writing() {
                                 handleReset()
                                 setCurrentIndex(0)
                             }}
-                            style={{ 
-                                backgroundColor: 'white', 
-                                borderRadius: '24px', 
-                                padding: '32px', 
+                            style={{
+                                backgroundColor: 'white',
+                                borderRadius: '24px',
+                                padding: '32px',
                                 cursor: 'pointer',
                                 border: '1px solid #F3F4F6',
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -160,15 +160,15 @@ export default function Writing() {
                                 position: 'relative',
                                 overflow: 'hidden'
                             }}
-                            whileHover={{ 
-                                y: -10, 
+                            whileHover={{
+                                y: -10,
                                 backgroundColor: sub.bg,
                                 borderColor: `${sub.color}30`,
                                 boxShadow: `0 20px 25px -5px ${sub.color}15, 0 10px 10px -5px ${sub.color}10`
                             }}
                         >
                             <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
-                                <motion.div 
+                                <motion.div
                                     style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}
                                     whileHover={{ scale: 1.15, rotate: 10 }}
                                 >
@@ -178,7 +178,7 @@ export default function Writing() {
                                     <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>{sub.title}</h2>
                                     <p style={{ color: '#6B7280', fontSize: '15px', lineHeight: '1.6', margin: 0 }}>{sub.desc}</p>
                                 </div>
-                                <motion.div 
+                                <motion.div
                                     style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '4px', color: sub.color, fontSize: '16px', fontWeight: '600' }}
                                     whileHover={{ x: 6 }}
                                 >
@@ -225,10 +225,10 @@ export default function Writing() {
             rulesList={WRITING_RULES}
         >
             <motion.div key={`prompt-${currentIndex}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                
+
                 {/* Back to submodules & Timer Header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                    <button 
+                    <button
                         onClick={() => setActiveSubmodule(null)}
                         style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: 'white', border: '1px solid #E5E7EB', borderRadius: '10px', color: '#4B5563', fontSize: '14px', fontWeight: '500', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     >
