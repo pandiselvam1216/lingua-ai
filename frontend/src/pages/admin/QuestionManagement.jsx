@@ -312,45 +312,47 @@ export default function QuestionManagement() {
         setSaveError('')
         setSaveSuccess(false)
 
-        if (activeModule === 'writing') {
-            if (titleLower.includes('email')) derivedSubModule = 'email'
-            else if (titleLower.includes('essay')) derivedSubModule = 'essay'
-            else if (titleLower.includes('letter')) derivedSubModule = 'letter'
-            else if (titleLower.includes('paragraph')) derivedSubModule = 'paragraph'
-            else if (titleLower.includes('dialogue')) derivedSubModule = 'dialogue'
-            else if (titleLower.includes('report')) derivedSubModule = 'report'
-        } else if (activeModule === 'grammar') {
-            if (titleLower.includes('tense')) derivedSubModule = 'tense'
-            else if (titleLower.includes('article')) derivedSubModule = 'articles'
-            else if (titleLower.includes('preposition')) derivedSubModule = 'prepositions'
-            else if (titleLower.includes('conjunction')) derivedSubModule = 'conjunction'
-            else if (titleLower.includes('pronoun')) derivedSubModule = 'pronoun'
-            else if (titleLower.includes('modal')) derivedSubModule = 'modal_verbs'
-        }
-
-        const payload = {
-            module_id: editingQuestion?.module_id || null,  // Will be set from active module for new questions
-            content: formData.content,
-            title: formData.title || null,
-            difficulty: formData.difficulty,
-            word_limit: activeModule === 'writing' ? (parseInt(formData.word_limit) || 150) : null,
-            options: ['grammar', 'listening', 'reading'].includes(activeModule) ? formData.options : null,
-            correct_answer: ['grammar', 'listening', 'reading'].includes(activeModule) ? formData.correct_answer : null,
-            explanation: formData.explanation || null,
-            is_published: formData.is_published,
-            is_active: true,
-            category: activeModule === 'listening' ? formData.category : null,
-            listening_module_id: (activeModule === 'listening' && formData.listening_module_id) ? formData.listening_module_id : null,
-            media_url: sourceType === 'file' 
-                ? (formData.audio_data?.startsWith('data:') 
-                    ? formData.audio_data   // base64 file upload — keep as-is
-                    : convertDriveUrl(formData.audio_data) || null)
-                : null,
-            sub_module: (activeModule === 'writing' || activeModule === 'grammar') ? derivedSubModule || formData.sub_module : null,
-            tts_config: sourceType === 'tts' ? formData.tts_config : null,
-        }
-
         try {
+            const titleLower = (formData.title || '').toLowerCase()
+            let derivedSubModule = formData.sub_module
+
+            if (activeModule === 'writing') {
+                if (titleLower.includes('email')) derivedSubModule = 'email'
+                else if (titleLower.includes('essay')) derivedSubModule = 'essay'
+                else if (titleLower.includes('letter')) derivedSubModule = 'letter'
+                else if (titleLower.includes('paragraph')) derivedSubModule = 'paragraph'
+                else if (titleLower.includes('dialogue')) derivedSubModule = 'dialogue'
+                else if (titleLower.includes('report')) derivedSubModule = 'report'
+            } else if (activeModule === 'grammar') {
+                if (titleLower.includes('tense')) derivedSubModule = 'tense'
+                else if (titleLower.includes('article')) derivedSubModule = 'articles'
+                else if (titleLower.includes('preposition')) derivedSubModule = 'prepositions'
+                else if (titleLower.includes('conjunction')) derivedSubModule = 'conjunction'
+                else if (titleLower.includes('pronoun')) derivedSubModule = 'pronoun'
+                else if (titleLower.includes('modal')) derivedSubModule = 'modal_verbs'
+            }
+
+            const payload = {
+                module_id: editingQuestion?.module_id || null,  // Will be set from active module for new questions
+                content: formData.content,
+                title: formData.title || null,
+                difficulty: formData.difficulty,
+                word_limit: activeModule === 'writing' ? (parseInt(formData.word_limit) || 150) : null,
+                options: ['grammar', 'listening', 'reading'].includes(activeModule) ? formData.options : null,
+                correct_answer: ['grammar', 'listening', 'reading'].includes(activeModule) ? formData.correct_answer : null,
+                explanation: formData.explanation || null,
+                is_published: formData.is_published,
+                is_active: true,
+                category: activeModule === 'listening' ? formData.category : null,
+                listening_module_id: (activeModule === 'listening' && formData.listening_module_id) ? formData.listening_module_id : null,
+                media_url: sourceType === 'file' 
+                    ? (formData.audio_data?.startsWith('data:') 
+                        ? formData.audio_data   // base64 file upload — keep as-is
+                        : convertDriveUrl(formData.audio_data) || null)
+                    : null,
+                sub_module: (activeModule === 'writing' || activeModule === 'grammar') ? derivedSubModule || formData.sub_module : null,
+                tts_config: sourceType === 'tts' ? formData.tts_config : null,
+            }
             if (editingQuestion) {
                 // Update existing question
                 const response = await api.put(`/admin/questions/${editingQuestion.id}`, payload)
