@@ -23,7 +23,6 @@ const adminItems = [
     { path: '/admin', icon: Shield, label: 'Admin Dashboard' },
     { path: '/admin/students', icon: Users, label: 'Students' },
     { path: '/admin/questions', icon: FileQuestion, label: 'Questions' },
-    { path: '/admin/listening', icon: Headphones, label: 'Listening Topics' },
     { path: '/admin/reports', icon: BarChart2, label: 'Reports' },
 ]
 

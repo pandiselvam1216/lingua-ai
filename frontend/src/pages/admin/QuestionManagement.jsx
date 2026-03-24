@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
     BookOpen, Plus, Edit2, Trash2, X, Check, Search,
     Headphones, Mic, FileText, PenTool, CheckSquare, Upload, FileUp, Eye, EyeOff,
-    BookMarked, Brain
+    BookMarked, Brain, Layers, Play, Pause, Save, AlertCircle, Volume2
 } from 'lucide-react'
 import api from '../../services/api'
+import listeningService from '../../services/listeningService'
 import Modal from '../../components/common/Modal'
 import AudioPlayer from '../../components/common/AudioPlayer'
 
@@ -44,6 +45,18 @@ export default function QuestionManagement() {
     const [availableVoices, setAvailableVoices] = useState([])
     const [sourceType, setSourceType] = useState('file') // 'file' or 'tts'
     const [listeningModules, setListeningModules] = useState([])
+    const [viewMode, setViewMode] = useState('questions') // 'questions' or 'topics'
+    const [showTopicModal, setShowTopicModal] = useState(false)
+    const [editingTopic, setEditingTopic] = useState(null)
+    const [topicSaving, setTopicSaving] = useState(false)
+    const [topicForm, setTopicForm] = useState({
+        title: '',
+        content: '',
+        category: 'conversations',
+        audio_url: '',
+        tts_config: { voiceName: '', rate: 1, pitch: 1 }
+    })
+    const [topicSource, setTopicSource] = useState('tts')
 
     const LISTENING_CATEGORIES = [
         { id: 'conversations', name: 'Conversations' },
@@ -139,10 +152,12 @@ export default function QuestionManagement() {
 
     const fetchQuestions = async () => {
         setLoading(true)
+        if (activeModule !== 'listening') setViewMode('questions')
+        
         try {
             if (activeModule === 'listening') {
                 const lmResp = await api.get('/admin/listening-modules')
-                setListeningModules(lmResp.data.modules || [])
+                setListeningModules(lmResp.data || [])
             }
 
             const response = await api.get(`/admin/questions?module=${activeModule}`)
@@ -156,6 +171,92 @@ export default function QuestionManagement() {
             setUsingLocalStorage(true)
         }
         setLoading(false)
+    }
+
+    const handleOpenTopicModal = (topic = null) => {
+        if (topic) {
+            setEditingTopic(topic)
+            setTopicSource(topic.tts_config ? 'tts' : 'file')
+            setTopicForm({
+                title: topic.title,
+                content: topic.content,
+                category: topic.category || 'conversations',
+                audio_url: topic.audio_url || '',
+                tts_config: topic.tts_config || { voiceName: availableVoices[0]?.name || '', rate: 1, pitch: 1 }
+            })
+        } else {
+            setEditingTopic(null)
+            setTopicSource('tts')
+            setTopicForm({
+                title: '',
+                content: '',
+                category: 'conversations',
+                audio_url: '',
+                tts_config: { voiceName: availableVoices[0]?.name || '', rate: 1, pitch: 1 }
+            })
+        }
+        setShowTopicModal(true)
+    }
+
+    const handleTopicSubmit = async (e) => {
+        e.preventDefault()
+        setTopicSaving(true)
+        const submitData = {
+            ...topicForm,
+            tts_config: topicSource === 'tts' ? topicForm.tts_config : null,
+            audio_url: topicSource === 'file' ? topicForm.audio_url : null
+        }
+        try {
+            if (editingTopic) {
+                const res = await listeningService.updateContent(editingTopic.id, submitData)
+                setListeningModules(prev => prev.map(t => t.id === editingTopic.id ? res.item : t))
+            } else {
+                const res = await listeningService.createContent(submitData)
+                setListeningModules(prev => [res.item, ...prev])
+            }
+            setShowTopicModal(false)
+            setAlertConfig({ isOpen: true, title: 'Success', message: 'Topic saved successfully', theme: 'success', type: 'alert' })
+        } catch (err) {
+            console.error('Topic save failed:', err)
+            setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to save topic', theme: 'danger', type: 'alert' })
+        } finally {
+            setTopicSaving(false)
+        }
+    }
+
+    const handleDeleteTopic = async (topicId) => {
+        setAlertConfig({
+            isOpen: true,
+            title: 'Delete Topic',
+            message: 'Are you sure? This will not delete questions linked to it, but they will become unlinked.',
+            theme: 'danger',
+            type: 'confirm',
+            confirmText: 'Delete',
+            onConfirm: async () => {
+                setAlertConfig({ isOpen: false })
+                try {
+                    await listeningService.deleteContent(topicId)
+                    setListeningModules(prev => prev.filter(t => t.id !== topicId))
+                } catch (err) {
+                    console.error('Delete failed:', err)
+                }
+            }
+        })
+    }
+
+    const handleTopicPreviewTTS = () => {
+        const text = topicForm.content
+        if (!text) return showAlert('Empty Content', 'Please enter some passage content to preview.', 'warning')
+
+        const utterance = new SpeechSynthesisUtterance(text)
+        if (topicForm.tts_config.voiceName) {
+            const voice = window.speechSynthesis.getVoices().find(v => v.name === topicForm.tts_config.voiceName)
+            if (voice) utterance.voice = voice
+        }
+        utterance.rate = topicForm.tts_config.rate
+        utterance.pitch = topicForm.tts_config.pitch
+        window.speechSynthesis.cancel()
+        window.speechSynthesis.speak(utterance)
     }
 
     const handleOpenModal = (question = null) => {
@@ -397,6 +498,11 @@ export default function QuestionManagement() {
         q.content.toLowerCase().includes(search.toLowerCase())
     )
 
+    const filteredTopics = listeningModules.filter(t =>
+        t.title.toLowerCase().includes(search.toLowerCase()) ||
+        t.content.toLowerCase().includes(search.toLowerCase())
+    )
+
     const handleTogglePublish = async (question) => {
         try {
             const response = await api.put(`/admin/questions/${question.id}/publish`, {
@@ -504,26 +610,56 @@ export default function QuestionManagement() {
                     </div>
                 </div>
  
-                <button
-                    onClick={() => handleOpenModal()}
-                    style={{
-                        padding: '12px 24px',
-                        borderRadius: '10px',
-                        border: 'none',
-                        background: `linear-gradient(135deg, ${moduleColors[activeModule]} 0%, ${moduleColors[activeModule]}99 100%)`,
-                        color: 'white',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        boxShadow: `0 4px 14px ${moduleColors[activeModule]}66`,
-                    }}
-                >
-                    <Plus size={18} />
-                    Add Question
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    {activeModule === 'listening' && (
+                        <div style={{ display: 'flex', backgroundColor: '#F3F4F6', padding: '4px', borderRadius: '10px' }}>
+                            <button
+                                onClick={() => setViewMode('questions')}
+                                style={{
+                                    padding: '8px 16px', borderRadius: '8px', border: 'none',
+                                    backgroundColor: viewMode === 'questions' ? 'white' : 'transparent',
+                                    color: viewMode === 'questions' ? '#111827' : '#6B7280',
+                                    fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                                    boxShadow: viewMode === 'questions' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                                }}
+                            >
+                                Questions
+                            </button>
+                            <button
+                                onClick={() => setViewMode('topics')}
+                                style={{
+                                    padding: '8px 16px', borderRadius: '8px', border: 'none',
+                                    backgroundColor: viewMode === 'topics' ? 'white' : 'transparent',
+                                    color: viewMode === 'topics' ? '#111827' : '#6B7280',
+                                    fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                                    boxShadow: viewMode === 'topics' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                                }}
+                            >
+                                Passages/Topics
+                            </button>
+                        </div>
+                    )}
+                    <button
+                        onClick={viewMode === 'topics' ? () => handleOpenTopicModal() : () => handleOpenModal()}
+                        style={{
+                            padding: '12px 24px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            background: `linear-gradient(135deg, ${moduleColors[activeModule]} 0%, ${moduleColors[activeModule]}99 100%)`,
+                            color: 'white',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: `0 4px 14px ${moduleColors[activeModule]}66`,
+                        }}
+                    >
+                        <Plus size={18} />
+                        {viewMode === 'topics' ? 'Add Topic' : 'Add Question'}
+                    </button>
+                </div>
             </div>
 
             {/* Module Tabs */}
@@ -601,7 +737,7 @@ export default function QuestionManagement() {
                 </div>
             </div>
 
-            {/* Questions List */}
+            {/* Main Content Area */}
             <div style={{
                 backgroundColor: 'white',
                 borderRadius: '16px',
@@ -611,8 +747,7 @@ export default function QuestionManagement() {
                 {loading ? (
                     <div style={{ padding: '48px', textAlign: 'center' }}>
                         <div style={{
-                            width: '40px',
-                            height: '40px',
+                            width: '40px', height: '40px',
                             border: '4px solid #E5E7EB',
                             borderTop: `4px solid ${moduleColors[activeModule]}`,
                             borderRadius: '50%',
@@ -620,140 +755,198 @@ export default function QuestionManagement() {
                             margin: '0 auto',
                         }} />
                     </div>
-                ) : filteredQuestions.length === 0 ? (
-                    <div style={{ padding: '48px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <BookOpen size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />
-                        <p style={{ fontSize: '16px', color: '#6B7280', margin: 0 }}>No questions found</p>
+                ) : viewMode === 'topics' ? (
+                    /* Topics List View */
+                    <div style={{ overflowX: 'auto' }}>
+                        {filteredTopics.length === 0 ? (
+                            <div style={{ padding: '48px', textAlign: 'center', color: '#6B7280' }}>
+                                <Headphones size={48} style={{ marginBottom: '16px', opacity: 0.2, margin: '0 auto 16px' }} />
+                                <p>No listening topics found.</p>
+                            </div>
+                        ) : (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #F3F4F6' }}>
+                                    <tr>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>Title & Passage</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>Source</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>Created</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredTopics.map((item) => (
+                                        <tr key={item.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                                            <td style={{ padding: '16px 24px' }}>
+                                                <div style={{ fontWeight: '600', color: '#111827', marginBottom: '4px' }}>{item.title}</div>
+                                                <div style={{ fontSize: '13px', color: '#6B7280', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                    {item.content}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '16px 24px' }}>
+                                                {item.tts_config ? (
+                                                    <span style={{ padding: '4px 10px', backgroundColor: '#EEF2FF', color: '#4F46E5', borderRadius: '20px', fontSize: '12px', fontWeight: '600' }}>AI TTS</span>
+                                                ) : (
+                                                    <span style={{ padding: '4px 10px', backgroundColor: '#F0FDF4', color: '#166534', borderRadius: '20px', fontSize: '12px', fontWeight: '600' }}>Audio File</span>
+                                                )}
+                                            </td>
+                                            <td style={{ padding: '16px 24px', fontSize: '14px', color: '#6B7280' }}>
+                                                {new Date(item.created_at).toLocaleDateString()}
+                                            </td>
+                                            <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                                    <button onClick={() => handleOpenTopicModal(item)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #E5E7EB', backgroundColor: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Edit2 size={16} style={{ color: '#4B5563' }} />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteTopic(item.id)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #FEE2E2', backgroundColor: '#FEF2F2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Trash2 size={16} style={{ color: '#EF4444' }} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 ) : (
+                    /* Questions List View */
                     <div>
-                        {filteredQuestions.map((question, idx) => (
-                            <motion.div
-                                key={question.id}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: idx * 0.05 }}
-                                style={{
-                                    padding: '20px 24px',
-                                    borderTop: idx > 0 ? '1px solid #F3F4F6' : 'none',
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    justifyContent: 'space-between',
-                                    gap: '16px',
-                                    flexWrap: 'wrap',
-                                }}
-                            >
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                        <span style={{
-                                            padding: '4px 10px',
-                                            borderRadius: '6px',
-                                            backgroundColor: question.difficulty === 1 ? '#F0FDF4' : question.difficulty === 2 ? '#FEF3C7' : '#FEE2E2',
-                                            color: question.difficulty === 1 ? '#166534' : question.difficulty === 2 ? '#D97706' : '#991B1B',
-                                            fontSize: '12px',
-                                            fontWeight: '500',
-                                        }}>
-                                            {question.difficulty === 1 ? 'Easy' : question.difficulty === 2 ? 'Medium' : 'Hard'}
-                                        </span>
-                                        {activeModule === 'listening' && question.category && (
-                                            <span style={{
-                                                padding: '4px 10px',
-                                                borderRadius: '6px',
-                                                backgroundColor: '#EDE9FE',
-                                                color: '#7C3AED',
-                                                fontSize: '12px',
-                                                fontWeight: '600',
-                                                textTransform: 'capitalize'
-                                            }}>
-                                                {question.category}
-                                            </span>
-                                        )}
-                                        {activeModule === 'listening' && question.listening_module_id && (
-                                            <span style={{ fontSize: '12px', color: '#6B7280', fontStyle: 'italic' }}>
-                                                Linked to: {listeningModules.find(m => m.id === question.listening_module_id)?.title || 'Selected Passage'}
-                                            </span>
-                                        )}
-                                        <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
-                                            Answer: {question.correct_answer}
-                                        </span>
-                                    </div>
-                                    <p style={{
-                                        fontSize: '15px',
-                                        color: '#111827',
-                                        margin: 0,
-                                        lineHeight: '1.5',
-                                    }}>
-                                        {question.content}
-                                    </p>
-                                    {question.options && (
-                                        <div style={{
+                        {filteredQuestions.length === 0 ? (
+                            <div style={{ padding: '48px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                <BookOpen size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />
+                                <p style={{ fontSize: '16px', color: '#6B7280', margin: 0 }}>No questions found</p>
+                            </div>
+                        ) : (
+                            <div>
+                                {filteredQuestions.map((question, idx) => (
+                                    <motion.div
+                                        key={question.id}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                        style={{
+                                            padding: '20px 24px',
+                                            borderTop: idx > 0 ? '1px solid #F3F4F6' : 'none',
                                             display: 'flex',
-                                            gap: '12px',
-                                            marginTop: '12px',
+                                            alignItems: 'flex-start',
+                                            justifyContent: 'space-between',
+                                            gap: '16px',
                                             flexWrap: 'wrap',
-                                        }}>
-                                            {question.options.map((opt) => (
-                                                <span
-                                                    key={opt.value}
-                                                    style={{
-                                                        padding: '6px 12px',
-                                                        borderRadius: '6px',
-                                                        backgroundColor: opt.value === question.correct_answer ? '#EFF6FF' : '#F9FAFB',
-                                                        border: opt.value === question.correct_answer ? '1px solid #3B82F6' : '1px solid #E5E7EB',
-                                                        fontSize: '13px',
-                                                        color: opt.value === question.correct_answer ? '#1D4ED8' : '#374151',
-                                                    }}
-                                                >
-                                                    <strong>{opt.value}.</strong> {opt.text}
+                                        }}
+                                    >
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                                <span style={{
+                                                    padding: '4px 10px',
+                                                    borderRadius: '6px',
+                                                    backgroundColor: question.difficulty === 1 ? '#F0FDF4' : question.difficulty === 2 ? '#FEF3C7' : '#FEE2E2',
+                                                    color: question.difficulty === 1 ? '#166534' : question.difficulty === 2 ? '#D97706' : '#991B1B',
+                                                    fontSize: '12px',
+                                                    fontWeight: '500',
+                                                }}>
+                                                    {question.difficulty === 1 ? 'Easy' : question.difficulty === 2 ? 'Medium' : 'Hard'}
                                                 </span>
-                                            ))}
+                                                {activeModule === 'listening' && question.category && (
+                                                    <span style={{
+                                                        padding: '4px 10px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: '#EDE9FE',
+                                                        color: '#7C3AED',
+                                                        fontSize: '12px',
+                                                        fontWeight: '600',
+                                                        textTransform: 'capitalize'
+                                                    }}>
+                                                        {question.category}
+                                                    </span>
+                                                )}
+                                                {activeModule === 'listening' && question.listening_module_id && (
+                                                    <span style={{ fontSize: '12px', color: '#6B7280', fontStyle: 'italic' }}>
+                                                        Linked to: {listeningModules.find(m => m.id === question.listening_module_id)?.title || 'Selected Passage'}
+                                                    </span>
+                                                )}
+                                                <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                                                    Answer: {question.correct_answer}
+                                                </span>
+                                            </div>
+                                            <p style={{
+                                                fontSize: '15px',
+                                                color: '#111827',
+                                                margin: 0,
+                                                lineHeight: '1.5',
+                                            }}>
+                                                {question.content}
+                                            </p>
+                                            {question.options && (
+                                                <div style={{
+                                                    display: 'flex',
+                                                    gap: '12px',
+                                                    marginTop: '12px',
+                                                    flexWrap: 'wrap',
+                                                }}>
+                                                    {question.options.map((opt) => (
+                                                        <span
+                                                            key={opt.value}
+                                                            style={{
+                                                                padding: '6px 12px',
+                                                                borderRadius: '6px',
+                                                                backgroundColor: opt.value === question.correct_answer ? '#EFF6FF' : '#F9FAFB',
+                                                                border: opt.value === question.correct_answer ? '1px solid #3B82F6' : '1px solid #E5E7EB',
+                                                                fontSize: '13px',
+                                                                color: opt.value === question.correct_answer ? '#1D4ED8' : '#374151',
+                                                            }}
+                                                        >
+                                                            <strong>{opt.value}.</strong> {opt.text}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button
-                                        onClick={() => handleTogglePublish(question)}
-                                        title={question.is_published ? 'Unpublish question' : 'Publish question'}
-                                        style={{
-                                            padding: '8px',
-                                            borderRadius: '8px',
-                                            border: question.is_published ? '1px solid #E0E7FF' : '1px solid #E5E7EB',
-                                            backgroundColor: question.is_published ? '#EFF6FF' : 'white',
-                                            cursor: 'pointer',
-                                        }}
-                                    >
-                                        {question.is_published ? 
-                                            <Eye size={16} style={{ color: '#3B82F6' }} /> : 
-                                            <EyeOff size={16} style={{ color: '#9CA3AF' }} />
-                                        }
-                                    </button>
-                                    <button
-                                        onClick={() => handleOpenModal(question)}
-                                        style={{
-                                            padding: '8px',
-                                            borderRadius: '8px',
-                                            border: '1px solid #E5E7EB',
-                                            backgroundColor: 'white',
-                                            cursor: 'pointer',
-                                        }}
-                                    >
-                                        <Edit2 size={16} style={{ color: '#6B7280' }} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(question.id)}
-                                        style={{
-                                            padding: '8px',
-                                            borderRadius: '8px',
-                                            border: '1px solid #FECACA',
-                                            backgroundColor: '#FEF2F2',
-                                            cursor: 'pointer',
-                                        }}
-                                    >
-                                        <Trash2 size={16} style={{ color: '#EF4444' }} />
-                                    </button>
-                                </div>
-                            </motion.div>
-                        ))}
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={() => handleTogglePublish(question)}
+                                                title={question.is_published ? 'Unpublish question' : 'Publish question'}
+                                                style={{
+                                                    padding: '8px',
+                                                    borderRadius: '8px',
+                                                    border: question.is_published ? '1px solid #E0E7FF' : '1px solid #E5E7EB',
+                                                    backgroundColor: question.is_published ? '#EFF6FF' : 'white',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                {question.is_published ? 
+                                                    <Eye size={16} style={{ color: '#3B82F6' }} /> : 
+                                                    <EyeOff size={16} style={{ color: '#9CA3AF' }} />
+                                                }
+                                            </button>
+                                            <button
+                                                onClick={() => handleOpenModal(question)}
+                                                style={{
+                                                    padding: '8px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #E5E7EB',
+                                                    backgroundColor: 'white',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                <Edit2 size={16} style={{ color: '#6B7280' }} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(question.id)}
+                                                style={{
+                                                    padding: '8px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #FECACA',
+                                                    backgroundColor: '#FEF2F2',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                <Trash2 size={16} style={{ color: '#EF4444' }} />
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -1344,6 +1537,152 @@ export default function QuestionManagement() {
                                     >
                                         <Check size={16} />
                                         {saving ? 'Saving...' : editingQuestion ? 'Update' : 'Create'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Topic Management Modal */}
+            <AnimatePresence>
+                {showTopicModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', inset: 0,
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            zIndex: 1000, padding: '20px'
+                        }}
+                        onClick={() => setShowTopicModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            style={{
+                                backgroundColor: 'white', borderRadius: '16px', padding: '32px',
+                                width: '100%', maxWidth: '600px', maxHeight: '90vh',
+                                overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                                <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                                    {editingTopic ? 'Edit Listening Topic' : 'Add Listening Topic'}
+                                </h2>
+                                <button onClick={() => setShowTopicModal(false)} style={{ padding: '8px', borderRadius: '8px', border: 'none', backgroundColor: '#F3F4F6', cursor: 'pointer' }}>
+                                    <X size={18} style={{ color: '#6B7280' }} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleTopicSubmit}>
+                                <div style={{ marginBottom: '20px' }}>
+                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Title</label>
+                                    <input
+                                        type="text" required
+                                        value={topicForm.title}
+                                        onChange={(e) => setTopicForm(p => ({ ...p, title: e.target.value }))}
+                                        placeholder="e.g. Daily Conversation about weather"
+                                        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '2px solid #E5E7EB', fontSize: '14px', outline: 'none' }}
+                                    />
+                                </div>
+
+                                <div style={{ marginBottom: '20px' }}>
+                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Category</label>
+                                    <select
+                                        value={topicForm.category}
+                                        onChange={(e) => setTopicForm(p => ({ ...p, category: e.target.value }))}
+                                        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '2px solid #E5E7EB', fontSize: '14px', backgroundColor: 'white' }}
+                                    >
+                                        {LISTENING_CATEGORIES.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div style={{ marginBottom: '20px' }}>
+                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Passage Content / Text</label>
+                                    <textarea
+                                        required rows={6}
+                                        value={topicForm.content}
+                                        onChange={(e) => setTopicForm(p => ({ ...p, content: e.target.value }))}
+                                        placeholder="The actual text of the passage..."
+                                        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '2px solid #E5E7EB', fontSize: '14px', outline: 'none', resize: 'vertical' }}
+                                    />
+                                </div>
+
+                                <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setTopicSource('tts')}
+                                            style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E5E7EB', backgroundColor: topicSource === 'tts' ? '#EFF6FF' : 'white', color: topicSource === 'tts' ? '#2563EB' : '#6B7280', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                                        >
+                                            <Volume2 size={16} style={{ display: 'inline', marginRight: '4px' }} /> AI Voice
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setTopicSource('file')}
+                                            style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #E5E7EB', backgroundColor: topicSource === 'file' ? '#EFF6FF' : 'white', color: topicSource === 'file' ? '#2563EB' : '#6B7280', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                                        >
+                                            <Upload size={16} style={{ display: 'inline', marginRight: '4px' }} /> Audio File
+                                        </button>
+                                    </div>
+
+                                    {topicSource === 'tts' ? (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>Voice</label>
+                                                <select
+                                                    value={topicForm.tts_config.voiceName}
+                                                    onChange={(e) => setTopicForm(p => ({ ...p, tts_config: { ...p.tts_config, voiceName: e.target.value } }))}
+                                                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '13px' }}
+                                                >
+                                                    {availableVoices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                                <button type="button" onClick={handleTopicPreviewTTS} style={{ width: '100%', padding: '8px', borderRadius: '6px', backgroundColor: '#3B82F6', color: 'white', border: 'none', fontSize: '13px', cursor: 'pointer' }}>
+                                                    🔊 Preview
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>Audio Data URL (Base64)</label>
+                                            <input
+                                                type="text"
+                                                value={topicForm.audio_url || ''}
+                                                onChange={(e) => setTopicForm(p => ({ ...p, audio_url: e.target.value }))}
+                                                placeholder="Paste base64 or URL here..."
+                                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '13px' }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button
+                                        type="button" onClick={() => setShowTopicModal(false)} disabled={topicSaving}
+                                        style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #E5E7EB', backgroundColor: 'white', color: '#374151', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit" disabled={topicSaving}
+                                        style={{
+                                            flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+                                            background: `linear-gradient(135deg, ${moduleColors.listening} 0%, ${moduleColors.listening}99 100%)`,
+                                            color: 'white', fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                        }}
+                                    >
+                                        <Check size={16} /> {topicSaving ? 'Saving...' : editingTopic ? 'Update' : 'Create'}
                                     </button>
                                 </div>
                             </form>

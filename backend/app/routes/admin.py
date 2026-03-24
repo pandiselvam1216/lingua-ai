@@ -537,7 +537,7 @@ def get_modules():
 def admin_get_listening_content():
     """Get all listening content for management"""
     content = ListeningModule.query.order_by(ListeningModule.created_at.desc()).all()
-    return jsonify({'modules': [c.to_dict() for c in content]}), 200
+    return jsonify([c.to_dict() for c in content]), 200
 
 
 @admin_bp.route('/listening', methods=['POST'])
