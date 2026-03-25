@@ -119,7 +119,7 @@ export default function ModuleLayout({
                                         {q.title || `Question ${idx + 1}`}
                                     </p>
                                 </div>
-                                {completedQuestions.includes(idx) && <Check size={14} style={{ color: iconColor }} />}
+                                {completedQuestions.includes(idx) && q.title?.toLowerCase() !== 'time management' && <Check size={14} style={{ color: iconColor }} />}
                             </motion.button>
                         ))}
                     </div>
@@ -132,7 +132,7 @@ export default function ModuleLayout({
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                             <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
                                 Question {currentIndex + 1} of {questions.length}
-                                {completedQuestions.includes(currentIndex) && <Check size={16} style={{ color: iconColor, marginLeft: '8px' }} />}
+                                {completedQuestions.includes(currentIndex) && questions[currentIndex].title?.toLowerCase() !== 'time management' && <Check size={16} style={{ color: iconColor, marginLeft: '8px' }} />}
                             </span>
                             <span style={{ fontSize: '14px', color: '#6B7280' }}>
                                 {Math.round(questionProgress)}%

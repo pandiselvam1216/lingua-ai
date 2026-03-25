@@ -173,7 +173,7 @@ export default function QuestionManagement() {
                 is_published: question.is_published || false,
                 audio_data: question.audio_data || question.media_url || null,
                 pdf_name: question.pdf_name || null,
-                sub_module: question.sub_module || 'essay',
+                sub_module: question.sub_module || (activeModule === 'grammar' ? 'tense' : 'essay'),
                 category: question.category || 'conversations',
                 listening_module_id: question.listening_module_id || '',
                 tts_config: question.tts_config || {
@@ -195,7 +195,7 @@ export default function QuestionManagement() {
                 is_published: true,
                 audio_data: null,
                 pdf_name: null,
-                sub_module: 'essay',
+                sub_module: activeModule === 'grammar' ? 'tense' : 'essay',
                 category: 'conversations',
                 listening_module_id: '',
                 tts_config: {
@@ -859,8 +859,8 @@ export default function QuestionManagement() {
 
                             <form onSubmit={handleSubmit}>
 
-                                {/* Title — Reading, Listening & Speaking/Writing prompts */}
-                                {(activeModule === 'reading' || activeModule === 'listening' || activeModule === 'speaking' || activeModule === 'writing') && (
+                                {/* Title — Reading, Listening, Speaking, Writing & Grammar prompts */}
+                                {(activeModule === 'reading' || activeModule === 'listening' || activeModule === 'speaking' || activeModule === 'writing' || activeModule === 'grammar') && (
                                     <div style={{ marginBottom: '20px' }}>
                                         <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
                                             Title
@@ -1020,6 +1020,33 @@ export default function QuestionManagement() {
                                     </div>
                                 )}
 
+                                {activeModule === 'grammar' && (
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                                            Grammar Topic
+                                        </label>
+                                        <select
+                                            value={formData.sub_module}
+                                            onChange={(e) => setFormData(p => ({ ...p, sub_module: e.target.value }))}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 14px',
+                                                borderRadius: '10px',
+                                                border: '2px solid #E5E7EB',
+                                                fontSize: '14px',
+                                                backgroundColor: 'white',
+                                            }}
+                                        >
+                                            <option value="tense">Tense</option>
+                                            <option value="articles">Articles</option>
+                                            <option value="prepositions">Prepositions</option>
+                                            <option value="conjunction">Conjunction</option>
+                                            <option value="pronoun">Pronoun</option>
+                                            <option value="modal_verbs">Modal Verbs</option>
+                                        </select>
+                                    </div>
+                                )}
+
                                 <div style={{ marginBottom: '20px' }}>
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
                                         {activeModule === 'reading' ? 'Passage Text' : 'Question'}
@@ -1092,32 +1119,7 @@ export default function QuestionManagement() {
                                     </div>
                                 )}
 
-                                {activeModule === 'grammar' && (
-                                    <div style={{ marginBottom: '20px' }}>
-                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                                            Grammar Topic
-                                        </label>
-                                        <select
-                                            value={formData.sub_module}
-                                            onChange={(e) => setFormData(p => ({ ...p, sub_module: e.target.value }))}
-                                            style={{
-                                                width: '100%',
-                                                padding: '12px 14px',
-                                                borderRadius: '10px',
-                                                border: '2px solid #E5E7EB',
-                                                fontSize: '14px',
-                                                backgroundColor: 'white',
-                                            }}
-                                        >
-                                            <option value="tense">Tense</option>
-                                            <option value="articles">Articles</option>
-                                            <option value="prepositions">Prepositions</option>
-                                            <option value="conjunction">Conjunction</option>
-                                            <option value="pronoun">Pronoun</option>
-                                            <option value="modal_verbs">Modal Verbs</option>
-                                        </select>
-                                    </div>
-                                )}
+                                
 
                                 {activeModule === 'writing' && (
                                     <div style={{ marginBottom: '20px' }}>

@@ -280,7 +280,10 @@ export default function Speaking() {
                                 {Object.entries(feedback.feedback || {}).map(([key, value]) => (
                                     <div key={key} style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                            <CheckCircle size={16} style={{ color: '#22C55E' }} />
+                                            {/* Hide tick for time management as requested */}
+                                            {key.toLowerCase() !== 'time management' && key.toLowerCase() !== 'time_management' && (
+                                                <CheckCircle size={16} style={{ color: '#22C55E' }} />
+                                            )}
                                             <span style={{ fontSize: '13px', fontWeight: '600', textTransform: 'capitalize' }}>{key}</span>
                                         </div>
                                         <p style={{ fontSize: '14px', color: '#6B7280', margin: 0, lineHeight: '1.5' }}>{value}</p>
