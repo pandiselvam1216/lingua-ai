@@ -108,6 +108,10 @@ class Question(db.Model):
     tags = db.Column(db.JSON)  # List of tags
     tts_config = db.Column(db.Text, nullable=True) # JSON string for voice, rate, pitch
     
+    # Writing specific
+    sub_module = db.Column(db.String(50)) # 'essay', 'email', 'letter', etc.
+    word_limit = db.Column(db.Integer, default=150)
+    
     # Status
     is_active = db.Column(db.Boolean, default=True)
     is_published = db.Column(db.Boolean, default=False)  # Published to students = visible in modules
@@ -137,6 +141,8 @@ class Question(db.Model):
             'tags': self.tags,
             'tts_config': json.loads(self.tts_config) if self.tts_config and isinstance(self.tts_config, str) else self.tts_config,
             'pdf_name': self.pdf_name,
+            'sub_module': self.sub_module,
+            'word_limit': self.word_limit,
             'is_active': self.is_active,
             'is_published': self.is_published
         }

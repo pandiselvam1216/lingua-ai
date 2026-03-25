@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckSquare, Star, Check, X, ChevronRight, Award, RotateCcw } from 'lucide-react'
+import { CheckSquare, Star, Check, X, ChevronRight, Award, RotateCcw, Clock, Type, MapPin, Link, User, Sparkles, ChevronLeft, ArrowLeft } from 'lucide-react'
 import { getModuleQuestions } from '../../services/questionService'
 import { saveModuleScore } from '../../utils/localScoring'
 import ModuleLayout from '../../components/common/ModuleLayout'
@@ -11,6 +11,15 @@ const GRAMMAR_RULES = [
     "You can retry an exercise at any time during the session, but your first attempt defines your score.",
     "Your score will be saved automatically once you complete all exercises in the session.",
     "Pay special attention to verb tense, subject-verb agreement, and proper preposition usage."
+]
+
+const SUBMODULES = [
+    { id: 'tense', title: 'Tense', icon: Clock, desc: 'Master past, present, and future tenses.', color: '#EF4444', bg: '#FEF2F2' },
+    { id: 'articles', title: 'Articles', icon: Type, desc: 'Learn to use A, An, and The correctly.', color: '#3B82F6', bg: '#EFF6FF' },
+    { id: 'prepositions', title: 'Prepositions', icon: MapPin, desc: 'Practice time and place prepositions.', color: '#10B981', bg: '#ECFDF5' },
+    { id: 'conjunction', title: 'Conjunction', icon: Link, desc: 'Connect ideas with the right conjunctions.', color: '#8B5CF6', bg: '#F5F3FF' },
+    { id: 'pronoun', title: 'Pronoun', icon: User, desc: 'Use personal and relative pronouns.', color: '#EC4899', bg: '#FDF2F8' },
+    { id: 'modal_verbs', title: 'Modal Verbs', icon: Sparkles, desc: 'Master Can, Should, and Must.', color: '#F59E0B', bg: '#FFFBEB' }
 ]
 
 export default function Grammar() {
@@ -28,18 +37,24 @@ export default function Grammar() {
         return saved ? JSON.parse(saved) : []
     })
 
+    const [activeSubmodule, setActiveSubmodule] = useState(null)
+
     useEffect(() => {
         localStorage.setItem('neuraLingua_completed_grammar', JSON.stringify(completedQuestions))
     }, [completedQuestions])
 
     useEffect(() => {
-        fetchQuestions()
-    }, [])
+        if (activeSubmodule) fetchQuestions()
+    }, [activeSubmodule])
 
     const fetchQuestions = async () => {
         try {
+            setLoading(true)
             const data = await getModuleQuestions('grammar')
-            setQuestions(data)
+            // Filter questions by active submodule
+            // Default to 'tense' if no sub_module is specified to support old questions
+            const filtered = data.filter(q => (q.sub_module === activeSubmodule) || (!q.sub_module && activeSubmodule === 'tense'))
+            setQuestions(filtered)
         } catch (error) {
             console.error('Failed to fetch questions:', error)
         } finally {
@@ -88,6 +103,80 @@ export default function Grammar() {
         setCompletedQuestions([])
     }
 
+    if (!activeSubmodule) {
+        return (
+            <div className="page-container" style={{ padding: '40px 32px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
+                {/* Header Section */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
+                    <button
+                        onClick={() => window.location.href = '/dashboard'}
+                        style={{
+                            width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'white',
+                            border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', color: '#6B7280', transition: 'all 0.2s ease',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                        }}
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+                    <div>
+                        <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#111827', margin: 0 }}>Grammar Categories</h1>
+                        <p style={{ color: '#6B7280', margin: '4px 0 0', fontSize: '16px' }}>Strengthen your grammar foundations topic-wise</p>
+                    </div>
+                </div>
+
+                {/* Submodules Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px' }}>
+                    {SUBMODULES.map((sub, idx) => (
+                        <motion.div
+                            key={sub.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            onClick={() => {
+                                setActiveSubmodule(sub.id)
+                                handleReset()
+                            }}
+                            style={{
+                                backgroundColor: 'white',
+                                borderRadius: '24px',
+                                padding: '32px',
+                                cursor: 'pointer',
+                                border: '1px solid #F3F4F6',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '20px',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                            whileHover={{
+                                y: -10,
+                                backgroundColor: sub.bg,
+                                borderColor: `${sub.color}30`,
+                                boxShadow: `0 20px 25px -5px ${sub.color}15`
+                            }}
+                        >
+                            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
+                                <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                                    <sub.icon size={24} color={sub.color} />
+                                </div>
+                                <div>
+                                    <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>{sub.title}</h2>
+                                    <p style={{ color: '#6B7280', fontSize: '15px', lineHeight: '1.6', margin: 0 }}>{sub.desc}</p>
+                                </div>
+                                <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '4px', color: sub.color, fontSize: '16px', fontWeight: '600' }}>
+                                    Start Practice <ChevronRight size={18} />
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
     if (loading) {
         return (
             <div className="page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
@@ -96,14 +185,16 @@ export default function Grammar() {
         )
     }
 
+    const currentSubmodule = SUBMODULES.find(s => s.id === activeSubmodule)
+
     return (
         <ModuleLayout
-            icon={CheckSquare}
-            iconColor="#EF4444"
-            iconBgBase="#EF4444"
-            iconBgHover="#DC2626"
-            title="Grammar Practice"
-            description="Master English grammar rules with interactive exercises"
+            icon={currentSubmodule?.icon || CheckSquare}
+            iconColor={currentSubmodule?.color || "#EF4444"}
+            iconBgBase={currentSubmodule?.color || "#EF4444"}
+            iconBgHover={currentSubmodule?.color || "#DC2626"}
+            title={currentSubmodule?.title ? `Grammar: ${currentSubmodule.title}` : "Grammar Practice"}
+            description={currentSubmodule?.desc || "Master English grammar rules with interactive exercises"}
             score={score.correct}
             totalScore={score.total}
             scoreDisplay={`${score.correct}/${score.total} (${scorePercent}%)`}
@@ -121,7 +212,17 @@ export default function Grammar() {
             onCloseRules={() => setShowRules(false)}
             rulesList={GRAMMAR_RULES}
         >
-            <motion.div key={currentIndex} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="card">
+            <motion.div key={activeSubmodule + '-' + currentIndex} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="card">
+                
+                {/* Back Link */}
+                <div style={{ marginBottom: '24px' }}>
+                    <button
+                        onClick={() => setActiveSubmodule(null)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: 'white', border: '1px solid #E5E7EB', borderRadius: '10px', color: '#4B5563', fontSize: '14px', fontWeight: '500', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                    >
+                        <ArrowLeft size={16} /> Back to Categories
+                    </button>
+                </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
                     <Star size={16} color="#F59E0B" fill="#F59E0B" />

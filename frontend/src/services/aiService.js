@@ -160,29 +160,34 @@ Return ONLY valid JSON array with exactly 5 topics in this format:
 }
 
 /**
- * Perform a deep analysis of writing content with knowledge of Indian English
+ * Perform a deep analysis of writing content with knowledge of Indian English and task accuracy
  */
-export const evaluateWritingAI = async (text) => {
+export const evaluateWritingAI = async (text, promptTitle = "General Writing", promptContent = "") => {
     const system = `You are a professional English editor specializing in Indian English (IndE). 
-Your task is to analyze the student's writing for grammar, vocabulary, and content.
-CRITICAL: Do NOT flag Indian names (e.g., Arjun, Priya), places (e.g., Chennai), festivals (e.g., Diwali), or cultural terms as spelling errors. 
+Your primary task is to evaluate the student's writing for grammar, vocabulary, and most importantly, Task Accuracy (how well they addressed the specific prompt).
+
+The prompt was: "${promptTitle}"
+Prompt Description: "${promptContent}"
 
 Return ONLY valid JSON in this exact format:
 {
   "score": 85,
+  "accuracy_level": "Excellent / Good / Fair / Poor",
+  "accuracy_score": 90,
   "feedback": {
     "grammar": "Brief summary of grammar quality.",
     "content": "Brief summary of content quality.",
-    "vocabulary": "Brief summary of vocabulary range."
+    "vocabulary": "Brief summary of vocabulary range.",
+    "accuracy": "Assessment of how accurately the student followed the prompt instructions."
   },
   "suggestions": [
      "Specific suggestion 1",
      "Specific suggestion 2"
   ]
 }
-Scores are 0-100. Factor Indian cultural context into positive vocabulary score.`
+Values for score and accuracy_score should be 0-100. Factor Indian cultural context into positive vocabulary score.`
 
-    const user = `Analyze this writing text: "${text.substring(0, 2000)}"`
+    const user = `Analyze this writing text in response to the prompt: "${text.substring(0, 2000)}"`
 
     const result = await chat(system, user)
     if (!result) return null

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { PenTool, Send, Clock, CheckCircle, ChevronRight, Award, RotateCcw, AlertCircle, Sparkles, FileText } from 'lucide-react'
+import { PenTool, Send, Clock, CheckCircle, ChevronRight, ChevronLeft, Award, RotateCcw, AlertCircle, Sparkles, FileText, Mail, ArrowLeft, BookOpen, MessageSquare, ClipboardList, AlignLeft, Play } from 'lucide-react'
 import { getModuleQuestions } from '../../services/questionService'
 import { evaluateWriting, saveModuleScore } from '../../utils/localScoring'
 import { getAIWritingFeedback } from '../../services/aiService'
@@ -14,7 +14,17 @@ const WRITING_RULES = [
     "Practice Regularly: The more you write and review feedback, the better your writing skills will become!"
 ]
 
+const SUBMODULES = [
+    { id: 'essay', title: 'Essay Writing', icon: FileText, desc: 'Write structured and persuasive essays.', color: '#8B5CF6', bg: '#F5F3FF' },
+    { id: 'email', title: 'Email Writing', icon: Mail, desc: 'Master professional email communication.', color: '#6366F1', bg: '#EEF2FF' },
+    { id: 'letter', title: 'Letter Writing', icon: Send, desc: 'Learn formal and informal letter styles.', color: '#EC4899', bg: '#FDF2F8' },
+    { id: 'paragraph', title: 'Paragraph Writing', icon: AlignLeft, desc: 'Structure clear and coherent paragraphs.', color: '#3B82F6', bg: '#EFF6FF' },
+    { id: 'dialogue', title: 'Dialogue Writing', icon: MessageSquare, desc: 'Craft natural conversations and scripts.', color: '#10B981', bg: '#ECFDF5' },
+    { id: 'report', title: 'Report Writing', icon: ClipboardList, desc: 'Draft factual and professional reports.', color: '#F59E0B', bg: '#FFFBEB' }
+]
+
 export default function Writing() {
+    const [activeSubmodule, setActiveSubmodule] = useState(null)
     const [prompts, setPrompts] = useState([])
     const [currentIndex, setCurrentIndex] = useState(0)
     const [essay, setEssay] = useState('')
@@ -36,19 +46,23 @@ export default function Writing() {
 
     useEffect(() => {
         fetchPrompts()
-    }, [])
+    }, [activeSubmodule])
 
     useEffect(() => {
         const timer = setInterval(() => {
-            if (!feedback) setTimeElapsed(prev => prev + 1)
+            if (!feedback && activeSubmodule) setTimeElapsed(prev => prev + 1)
         }, 1000)
         return () => clearInterval(timer)
-    }, [feedback])
+    }, [feedback, activeSubmodule])
 
     const fetchPrompts = async () => {
         try {
+            setLoading(true)
             const data = await getModuleQuestions('writing')
-            setPrompts(data)
+            // Filter prompts by active submodule
+            // Default to 'essay' if no sub_module is specified to support old questions
+            const filtered = data.filter(p => (p.sub_module === activeSubmodule) || (!p.sub_module && activeSubmodule === 'essay'))
+            setPrompts(filtered)
         } catch (error) {
             console.error('Failed to fetch prompts:', error)
         } finally {
@@ -66,9 +80,9 @@ export default function Writing() {
 
         setSubmitting(true)
         try {
-            const result = await evaluateWriting(essay, timeElapsed)
+            const result = await evaluateWriting(essay, timeElapsed, currentPrompt?.title, currentPrompt?.content)
             const aiFeedback = await getAIWritingFeedback(essay, currentPrompt?.title || 'General Writing', result.suggestions?.length || 0)
-            
+
             if (aiFeedback) result.aiFeedback = aiFeedback
             setFeedback(result)
 
@@ -94,6 +108,90 @@ export default function Writing() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
 
+    // --- Submodule Selection Screen ---
+    if (!activeSubmodule) {
+        return (
+            <div className="page-container" style={{ padding: '40px 32px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
+                {/* Header Section */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
+                    <button
+                        onClick={() => window.location.href = '/dashboard'}
+                        style={{
+                            width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'white',
+                            border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', color: '#6B7280', transition: 'all 0.2s ease',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#F9FAFB'; e.currentTarget.style.borderColor = '#D1D5DB' }}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.borderColor = '#E5E7EB' }}
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+                    <div>
+                        <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#111827', margin: 0 }}>Writing Categories</h1>
+                        <p style={{ color: '#6B7280', margin: '4px 0 0', fontSize: '16px' }}>Select a specialized writing area to begin your practice</p>
+                    </div>
+                </div>
+
+                {/* Submodules Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px' }}>
+                    {SUBMODULES.map((sub, idx) => (
+                        <motion.div
+                            key={sub.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            onClick={() => {
+                                setActiveSubmodule(sub.id)
+                                handleReset()
+                                setCurrentIndex(0)
+                            }}
+                            style={{
+                                backgroundColor: 'white',
+                                borderRadius: '24px',
+                                padding: '32px',
+                                cursor: 'pointer',
+                                border: '1px solid #F3F4F6',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '20px',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                            whileHover={{
+                                y: -10,
+                                backgroundColor: sub.bg,
+                                borderColor: `${sub.color}30`,
+                                boxShadow: `0 20px 25px -5px ${sub.color}15, 0 10px 10px -5px ${sub.color}10`
+                            }}
+                        >
+                            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
+                                <motion.div
+                                    style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}
+                                    whileHover={{ scale: 1.15, rotate: 10 }}
+                                >
+                                    <sub.icon size={24} color={sub.color} />
+                                </motion.div>
+                                <div>
+                                    <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>{sub.title}</h2>
+                                    <p style={{ color: '#6B7280', fontSize: '15px', lineHeight: '1.6', margin: 0 }}>{sub.desc}</p>
+                                </div>
+                                <motion.div
+                                    style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '4px', color: sub.color, fontSize: '16px', fontWeight: '600' }}
+                                    whileHover={{ x: 6 }}
+                                >
+                                    Start Practice <ChevronRight size={18} />
+                                </motion.div>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
     if (loading) {
         return (
             <div className="page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
@@ -102,14 +200,16 @@ export default function Writing() {
         )
     }
 
+    const currentSubmodule = SUBMODULES.find(s => s.id === activeSubmodule)
+
     return (
         <ModuleLayout
-            icon={PenTool}
+            icon={currentSubmodule?.icon || PenTool}
             iconColor="#F59E0B"
             iconBgBase="#F59E0B"
             iconBgHover="#D97706"
-            title="Writing Practice"
-            description="Develop your essay writing skills with AI feedback"
+            title={currentSubmodule?.title || "Writing Practice"}
+            description={currentSubmodule?.desc || "Develop your essay writing skills with AI feedback"}
             score={completedTopics.length}
             totalScore={prompts.length}
             questions={prompts}
@@ -125,13 +225,22 @@ export default function Writing() {
             rulesList={WRITING_RULES}
         >
             <motion.div key={`prompt-${currentIndex}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                
-                {/* Timer Header Component */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', width: 'fit-content', marginBottom: '16px' }}>
-                    <Clock size={16} color="#6B7280" />
-                    <span style={{ fontSize: '14px', fontWeight: '600', fontFamily: 'monospace' }}>
-                        {formatTime(timeElapsed)}
-                    </span>
+
+                {/* Back to submodules & Timer Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                    <button
+                        onClick={() => setActiveSubmodule(null)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: 'white', border: '1px solid #E5E7EB', borderRadius: '10px', color: '#4B5563', fontSize: '14px', fontWeight: '500', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                    >
+                        <ArrowLeft size={16} /> Back to Submodules
+                    </button>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <Clock size={16} color="#6B7280" />
+                        <span style={{ fontSize: '14px', fontWeight: '600', fontFamily: 'monospace' }}>
+                            {formatTime(timeElapsed)}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Prompt Info */}
@@ -172,7 +281,7 @@ export default function Writing() {
                         value={essay}
                         onChange={(e) => setEssay(e.target.value)}
                         disabled={!!feedback}
-                        placeholder="Start writing your essay here..."
+                        placeholder="Start writing your text here..."
                         style={{ width: '100%', minHeight: '350px', padding: '24px', border: 'none', backgroundColor: feedback ? '#F9FAFB' : 'white', fontSize: '15px', lineHeight: '1.8', outline: 'none', resize: 'vertical' }}
                     />
 
@@ -200,11 +309,25 @@ export default function Writing() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <Sparkles size={20} color="#F59E0B" />
                                     <h3 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>AI Feedback</h3>
+                                    {feedback.accuracy_level && (
+                                        <div style={{ padding: '4px 10px', backgroundColor: '#F3F4F6', borderRadius: '6px', fontSize: '12px', fontWeight: '700', color: '#374151', border: '1px solid #E5E7EB' }}>
+                                            ACCURACY: {feedback.accuracy_level}
+                                        </div>
+                                    )}
                                 </div>
-                                <div style={{ padding: '8px 16px', backgroundColor: feedback.score >= 70 ? '#FEF3C7' : '#FEF2F2', borderRadius: '20px' }}>
-                                    <span style={{ fontSize: '18px', fontWeight: '700', color: feedback.score >= 70 ? '#D97706' : '#EF4444' }}>
-                                        {feedback.score}/100
-                                    </span>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'flex-end' }}>
+                                    {feedback.accuracy_score && (
+                                        <div style={{ padding: '8px 16px', backgroundColor: '#EFF6FF', borderRadius: '20px', border: '1px solid #DBEAFE' }}>
+                                            <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>
+                                                Accuracy: {feedback.accuracy_score}%
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div style={{ padding: '8px 16px', backgroundColor: feedback.score >= 70 ? '#FEF3C7' : '#FEF2F2', borderRadius: '20px' }}>
+                                        <span style={{ fontSize: '18px', fontWeight: '700', color: feedback.score >= 70 ? '#D97706' : '#EF4444' }}>
+                                            Overall: {feedback.score}/100
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -212,7 +335,10 @@ export default function Writing() {
                                 {Object.entries(feedback.feedback || {}).map(([key, value]) => (
                                     <div key={key} style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '12px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                            <CheckCircle size={16} color="#F59E0B" />
+                                            {/* Hide tick for time management as requested */}
+                                            {key.toLowerCase() !== 'time management' && key.toLowerCase() !== 'time_management' && (
+                                                <CheckCircle size={16} color="#F59E0B" />
+                                            )}
                                             <span style={{ fontSize: '14px', fontWeight: '600', textTransform: 'capitalize' }}>{key}</span>
                                         </div>
                                         <p style={{ fontSize: '14px', color: '#6B7280', margin: 0, lineHeight: '1.5' }}>{value}</p>
@@ -256,10 +382,10 @@ export default function Writing() {
                                 <Award size={40} />
                             </div>
                             <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>All Prompts Completed!</h2>
-                            <p style={{ color: '#6B7280', margin: '8px 0 24px' }}>Excellent work practicing your essay writing.</p>
+                            <p style={{ color: '#6B7280', margin: '8px 0 24px' }}>Excellent work practicing your writing.</p>
                             <div style={{ display: 'grid', gap: '12px' }}>
                                 <button onClick={() => window.location.reload()} className="btn btn-secondary">Restart Module</button>
-                                <button onClick={() => window.location.href = '/dashboard'} className="btn btn-primary" style={{ background: '#F59E0B' }}>Back to Dashboard</button>
+                                <button onClick={() => { setShowCompletionTracker(false); setActiveSubmodule(null); }} className="btn btn-primary" style={{ background: '#F59E0B' }}>Back to Submodules</button>
                             </div>
                         </motion.div>
                     </div>

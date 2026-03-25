@@ -89,6 +89,7 @@ export default function QuestionManagement() {
         is_published: true,  // Default to published so questions appear on user pages
         audio_data: null,  // base64 data URL for listening audio
         pdf_name: null,    // uploaded
+        sub_module: 'essay', // For writing/grammar module
         category: 'conversations',
         listening_module_id: '',
         tts_config: {
@@ -147,6 +148,7 @@ export default function QuestionManagement() {
         type: item.options ? 'mcq' : 'prompt',
         audio_data: item.media_url || null,
         pdf_name: item.pdf_name || null,
+        sub_module: item.sub_module || null,
         tts_config: item.tts_config || null
     })
 
@@ -272,6 +274,7 @@ export default function QuestionManagement() {
                 is_published: question.is_published || false,
                 audio_data: question.audio_data || question.media_url || null,
                 pdf_name: question.pdf_name || null,
+                sub_module: question.sub_module || (activeModule === 'grammar' ? 'tense' : 'essay'),
                 category: question.category || 'conversations',
                 listening_module_id: question.listening_module_id || '',
                 tts_config: question.tts_config || {
@@ -293,6 +296,7 @@ export default function QuestionManagement() {
                 is_published: true,
                 audio_data: null,
                 pdf_name: null,
+                sub_module: activeModule === 'grammar' ? 'tense' : 'essay',
                 category: 'conversations',
                 listening_module_id: '',
                 tts_config: {
@@ -409,27 +413,47 @@ export default function QuestionManagement() {
         setSaveError('')
         setSaveSuccess(false)
 
-        const payload = {
-            module_id: editingQuestion?.module_id || null,  // Will be set from active module for new questions
-            content: formData.content,
-            title: formData.title || null,
-            difficulty: formData.difficulty,
-            options: ['grammar', 'listening', 'reading'].includes(activeModule) ? formData.options : null,
-            correct_answer: ['grammar', 'listening', 'reading'].includes(activeModule) ? formData.correct_answer : null,
-            explanation: formData.explanation || null,
-            is_published: formData.is_published,
-            is_active: true,
-            category: activeModule === 'listening' ? formData.category : null,
-            listening_module_id: (activeModule === 'listening' && formData.listening_module_id) ? formData.listening_module_id : null,
-            media_url: sourceType === 'file' 
-                ? (formData.audio_data?.startsWith('data:') 
-                    ? formData.audio_data   // base64 file upload — keep as-is
-                    : convertDriveUrl(formData.audio_data) || null)
-                : null,
-            tts_config: sourceType === 'tts' ? formData.tts_config : null,
-        }
-
         try {
+            const titleLower = (formData.title || '').toLowerCase()
+            let derivedSubModule = formData.sub_module
+
+            if (activeModule === 'writing') {
+                if (titleLower.includes('email')) derivedSubModule = 'email'
+                else if (titleLower.includes('essay')) derivedSubModule = 'essay'
+                else if (titleLower.includes('letter')) derivedSubModule = 'letter'
+                else if (titleLower.includes('paragraph')) derivedSubModule = 'paragraph'
+                else if (titleLower.includes('dialogue')) derivedSubModule = 'dialogue'
+                else if (titleLower.includes('report')) derivedSubModule = 'report'
+            } else if (activeModule === 'grammar') {
+                if (titleLower.includes('tense')) derivedSubModule = 'tense'
+                else if (titleLower.includes('article')) derivedSubModule = 'articles'
+                else if (titleLower.includes('preposition')) derivedSubModule = 'prepositions'
+                else if (titleLower.includes('conjunction')) derivedSubModule = 'conjunction'
+                else if (titleLower.includes('pronoun')) derivedSubModule = 'pronoun'
+                else if (titleLower.includes('modal')) derivedSubModule = 'modal_verbs'
+            }
+
+            const payload = {
+                module_id: editingQuestion?.module_id || null,  // Will be set from active module for new questions
+                content: formData.content,
+                title: formData.title || null,
+                difficulty: formData.difficulty,
+                word_limit: activeModule === 'writing' ? (parseInt(formData.word_limit) || 150) : null,
+                options: ['grammar', 'listening', 'reading'].includes(activeModule) ? formData.options : null,
+                correct_answer: ['grammar', 'listening', 'reading'].includes(activeModule) ? formData.correct_answer : null,
+                explanation: formData.explanation || null,
+                is_published: formData.is_published,
+                is_active: true,
+                category: activeModule === 'listening' ? formData.category : null,
+                listening_module_id: (activeModule === 'listening' && formData.listening_module_id) ? formData.listening_module_id : null,
+                media_url: sourceType === 'file' 
+                    ? (formData.audio_data?.startsWith('data:') 
+                        ? formData.audio_data   // base64 file upload — keep as-is
+                        : convertDriveUrl(formData.audio_data) || null)
+                    : null,
+                sub_module: (activeModule === 'writing' || activeModule === 'grammar') ? derivedSubModule || formData.sub_module : null,
+                tts_config: sourceType === 'tts' ? formData.tts_config : null,
+            }
             if (editingQuestion) {
                 // Update existing question
                 const response = await api.put(`/admin/questions/${editingQuestion.id}`, payload)
@@ -867,6 +891,20 @@ export default function QuestionManagement() {
                                                 <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
                                                     Answer: {question.correct_answer}
                                                 </span>
+                                                {(activeModule === 'writing' || activeModule === 'grammar') && question.sub_module && (
+                                                    <span style={{
+                                                        padding: '4px 10px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: activeModule === 'grammar' ? '#FEE2E2' : '#F5F3FF',
+                                                        color: activeModule === 'grammar' ? '#EF4444' : '#7C3AED',
+                                                        fontSize: '11px',
+                                                        fontWeight: '700',
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: '0.05em'
+                                                    }}>
+                                                        {question.sub_module.replace('_', ' ')}
+                                                    </span>
+                                                )}
                                             </div>
                                             <p style={{
                                                 fontSize: '15px',
@@ -1014,8 +1052,8 @@ export default function QuestionManagement() {
 
                             <form onSubmit={handleSubmit}>
 
-                                {/* Title — Reading, Listening & Speaking/Writing prompts */}
-                                {(activeModule === 'reading' || activeModule === 'listening' || activeModule === 'speaking' || activeModule === 'writing') && (
+                                {/* Title — Reading, Listening, Speaking, Writing & Grammar prompts */}
+                                {(activeModule === 'reading' || activeModule === 'listening' || activeModule === 'speaking' || activeModule === 'writing' || activeModule === 'grammar') && (
                                     <div style={{ marginBottom: '20px' }}>
                                         <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
                                             Title
@@ -1023,7 +1061,27 @@ export default function QuestionManagement() {
                                         <input
                                             type="text"
                                             value={formData.title}
-                                            onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                const valLower = val.toLowerCase();
+                                                let autoSub = formData.sub_module;
+                                                if (activeModule === 'writing') {
+                                                    if (valLower.includes('email')) autoSub = 'email';
+                                                    else if (valLower.includes('essay')) autoSub = 'essay';
+                                                    else if (valLower.includes('letter')) autoSub = 'letter';
+                                                    else if (valLower.includes('paragraph')) autoSub = 'paragraph';
+                                                    else if (valLower.includes('dialogue')) autoSub = 'dialogue';
+                                                    else if (valLower.includes('report')) autoSub = 'report';
+                                                } else if (activeModule === 'grammar') {
+                                                    if (valLower.includes('tense')) autoSub = 'tense';
+                                                    else if (valLower.includes('article')) autoSub = 'articles';
+                                                    else if (valLower.includes('preposition')) autoSub = 'prepositions';
+                                                    else if (valLower.includes('conjunction')) autoSub = 'conjunction';
+                                                    else if (valLower.includes('pronoun')) autoSub = 'pronoun';
+                                                    else if (valLower.includes('modal')) autoSub = 'modal_verbs';
+                                                }
+                                                setFormData(p => ({ ...p, title: val, sub_module: autoSub }))
+                                            }}
                                             placeholder={activeModule === 'reading' ? 'e.g. The Water Cycle' : 'Topic or prompt title'}
                                             style={{
                                                 width: '100%',
@@ -1155,6 +1213,33 @@ export default function QuestionManagement() {
                                     </div>
                                 )}
 
+                                {activeModule === 'grammar' && (
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                                            Grammar Topic
+                                        </label>
+                                        <select
+                                            value={formData.sub_module}
+                                            onChange={(e) => setFormData(p => ({ ...p, sub_module: e.target.value }))}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 14px',
+                                                borderRadius: '10px',
+                                                border: '2px solid #E5E7EB',
+                                                fontSize: '14px',
+                                                backgroundColor: 'white',
+                                            }}
+                                        >
+                                            <option value="tense">Tense</option>
+                                            <option value="articles">Articles</option>
+                                            <option value="prepositions">Prepositions</option>
+                                            <option value="conjunction">Conjunction</option>
+                                            <option value="pronoun">Pronoun</option>
+                                            <option value="modal_verbs">Modal Verbs</option>
+                                        </select>
+                                    </div>
+                                )}
+
                                 <div style={{ marginBottom: '20px' }}>
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
                                         {activeModule === 'reading' ? 'Passage Text' : 'Question'}
@@ -1199,6 +1284,56 @@ export default function QuestionManagement() {
                                         <option value={3}>Hard</option>
                                     </select>
                                 </div>
+                                
+                                {activeModule === 'writing' && (
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                                            Writing Submodule
+                                        </label>
+                                        <select
+                                            value={formData.sub_module}
+                                            onChange={(e) => setFormData(p => ({ ...p, sub_module: e.target.value }))}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 14px',
+                                                borderRadius: '10px',
+                                                border: '2px solid #E5E7EB',
+                                                fontSize: '14px',
+                                                backgroundColor: 'white',
+                                            }}
+                                        >
+                                            <option value="essay">Essay Writing</option>
+                                            <option value="email">Email Writing</option>
+                                            <option value="letter">Letter Writing</option>
+                                            <option value="paragraph">Paragraph Writing</option>
+                                            <option value="dialogue">Dialogue Writing</option>
+                                            <option value="report">Report Writing</option>
+                                        </select>
+                                    </div>
+                                )}
+
+                                
+
+                                {activeModule === 'writing' && (
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                                            Word Limit
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={formData.word_limit || 150}
+                                            onChange={(e) => setFormData(p => ({ ...p, word_limit: parseInt(e.target.value) }))}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 14px',
+                                                borderRadius: '10px',
+                                                border: '2px solid #E5E7EB',
+                                                fontSize: '14px',
+                                                outline: 'none',
+                                            }}
+                                        />
+                                    </div>
+                                )}
 
                                 {/* Audio Configuration */}
                                 {/* Audio Configuration - Only for Listening module or if explicitly enabled */}
