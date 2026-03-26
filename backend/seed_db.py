@@ -140,82 +140,74 @@ def seed_data():
             }
         ]
         
-        # Speaking Prompts (Expanded Curriculum)
+        # Speaking Prompts (Antigravity Business & Corporate Curriculum)
         speaking_prompts = [
-            # Beginner
+            # Stage 1: Core Mechanics
             {
-                'type': 'speaking_prompt', 'category': 'Pronunciation', 'title': 'Minimal Pairs Drill',
-                'content': 'Read the following words clearly: Sheep, Ship, Beat, Bit, Luke, Look. Ensure you clearly differentiate the vowel sounds.',
-                'difficulty': 1, 'time_limit': 60, 'tags': ['speaking', 'pronunciation', 'phonetics']
+                'type': 'speaking_prompt', 'category': 'Proper Pronunciation', 'title': 'Corporate Vocabulary Drill',
+                'content': 'Read the following terms distinctly, focusing on syllable stress: Amortization, Synergistic, Quantitative, Deliverable, Remuneration.',
+                'difficulty': 1, 'time_limit': 60, 'tags': ['speaking', 'pronunciation', 'business']
             },
             {
-                'type': 'speaking_prompt', 'category': 'Self-Introduction', 'title': 'The Elevator Pitch',
-                'content': 'You have 30 seconds to introduce yourself to a potential employer. State your name, profession, and one key strength.',
-                'difficulty': 1, 'time_limit': 60, 'tags': ['speaking', 'introduction', 'professional']
+                'type': 'speaking_prompt', 'category': 'Tone & Emotion', 'title': 'Delivering Bad Q3 News',
+                'content': 'You must inform the board that Q3 revenue missed projections by 12%. Deliver this statement with a tone that is serious, accountable, yet forward-looking and confident.',
+                'difficulty': 3, 'time_limit': 90, 'tags': ['speaking', 'tone', 'corporate']
+            },
+
+            # Stage 2: Everyday Operations
+            {
+                'type': 'speaking_prompt', 'category': 'Self-Introduction', 'title': 'The B2B Networking Pitch',
+                'content': 'You are at an industry conference. Introduce yourself to a high-value prospect in under 45 seconds. Include your name, your firm\'s core value proposition, and an engaging hook.',
+                'difficulty': 2, 'time_limit': 60, 'tags': ['speaking', 'introduction', 'networking']
             },
             {
-                'type': 'speaking_prompt', 'category': 'Description', 'title': 'Describe a Lost Item',
-                'content': 'You have lost your backpack at the train station. Describe it in detail to the security officer (color, brand, contents, distinguishing marks).',
-                'difficulty': 1, 'time_limit': 90, 'tags': ['speaking', 'description', 'visual']
-            },
-            
-            # Intermediate
-            {
-                'type': 'speaking_prompt', 'category': 'Conversations', 'title': 'Ordering at a Restaurant',
-                'content': 'Roleplay: You are at a restaurant. Order a main course, ask to substitute the fries for a salad, and inquire if the soup is vegetarian.',
-                'difficulty': 2, 'time_limit': 90, 'tags': ['speaking', 'conversation', 'roleplay']
+                'type': 'speaking_prompt', 'category': 'Description', 'title': 'Product Architecture Overview',
+                'content': 'Without using slides, verbally describe the layout and core user flow of your company\'s new software dashboard to a non-technical stakeholder.',
+                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'description', 'product']
             },
             {
-                'type': 'speaking_prompt', 'category': 'Instructions', 'title': 'Tech Support for a Friend',
-                'content': 'Explain to your grandmother, step-by-step, how to connect her smartphone to a new Wi-Fi network.',
-                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'instructions', 'sequential']
+                'type': 'speaking_prompt', 'category': 'Instructions', 'title': 'Rolling Out Compliance Protocols',
+                'content': 'Explain the new 3-step mandatory data security protocol to your department. Use clear signposting (First, Next, Finally) so there is zero confusion.',
+                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'instructions', 'compliance']
             },
             {
-                'type': 'speaking_prompt', 'category': 'Opinions', 'title': 'Remote Work vs. Office',
-                'content': 'Express your opinion on whether remote work is better than working in an office. Provide at least two reasons to support your view.',
-                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'opinion', 'argumentation']
+                'type': 'speaking_prompt', 'category': 'Conversations', 'title': 'Client Small Talk',
+                'content': 'You are waiting in a virtual meeting lobby with a crucial client for 2 minutes before the CEO joins. Initiate and maintain professional, engaging small talk.',
+                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'conversation', 'client-relations']
+            },
+
+            # Stage 3: Complex Expression
+            {
+                'type': 'speaking_prompt', 'category': 'Storytelling', 'title': 'The Turnaround Narrative',
+                'content': 'Tell the story of a failing project that you or your team successfully turned around. Focus on the conflict, the strategic action taken, and the positive business outcome.',
+                'difficulty': 3, 'time_limit': 180, 'tags': ['speaking', 'storytelling', 'leadership']
             },
             {
-                'type': 'speaking_prompt', 'category': 'Storytelling', 'title': 'A Memorable Holiday',
-                'content': 'Narrate a story about a memorable holiday you took. Focus on using past tenses and sequencing words (first, then, after that).',
-                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'storytelling', 'past-tense']
+                'type': 'speaking_prompt', 'category': 'Opinions', 'title': 'Defending a Strategic Pivot',
+                'content': 'State your opinion on shifting the company\'s marketing budget entirely from traditional print to AI-driven digital ads. Provide two data-backed reasons supporting your view.',
+                'difficulty': 3, 'time_limit': 120, 'tags': ['speaking', 'opinion', 'strategy']
             },
             {
-                'type': 'speaking_prompt', 'category': 'Digital Communication', 'title': 'Professional Voicemail',
-                'content': 'Record a professional out-of-office voicemail message stating you are away until Monday and providing an alternative contact.',
-                'difficulty': 2, 'time_limit': 60, 'tags': ['speaking', 'digital', 'professional']
+                'type': 'speaking_prompt', 'category': 'Discussions', 'title': 'Mediating a Budget Dispute',
+                'content': 'The Sales and Engineering directors are arguing over the quarterly budget. Interject professionally, summarize both their concerns, and propose a diplomatic compromise.',
+                'difficulty': 3, 'time_limit': 120, 'tags': ['speaking', 'discussion', 'mediation']
             },
-            
-            # Advanced
+
+            # Stage 4: High-Stakes Environments
             {
-                'type': 'speaking_prompt', 'category': 'Discussions', 'title': 'Universal Basic Income',
-                'content': 'In a simulated group discussion, argue FOR the implementation of Universal Basic Income. Address one potential counter-argument.',
-                'difficulty': 3, 'time_limit': 180, 'tags': ['speaking', 'discussion', 'persuasion']
-            },
-            {
-                'type': 'speaking_prompt', 'category': 'Presentations', 'title': 'Project Update',
-                'content': 'Present a brief update on a hypothetical project. Outline what has been completed, upcoming milestones, and one current blocker.',
-                'difficulty': 3, 'time_limit': 180, 'tags': ['speaking', 'presentation', 'business']
+                'type': 'speaking_prompt', 'category': 'Interviews', 'title': 'Executive Behavioral Interview',
+                'content': 'Answer the following executive interview question using the STAR method: "Describe a time you had to challenge a decision made by a senior stakeholder or CEO."',
+                'difficulty': 3, 'time_limit': 180, 'tags': ['speaking', 'interview', 'executive']
             },
             {
-                'type': 'speaking_prompt', 'category': 'Public Speaking', 'title': 'Impromptu: The Future of AI',
-                'content': 'Speak for 2 minutes on "How Artificial Intelligence will change daily life in the next decade." Focus on opening impact and clear structure.',
-                'difficulty': 3, 'time_limit': 120, 'tags': ['speaking', 'public-speaking', 'impromptu']
+                'type': 'speaking_prompt', 'category': 'Presentations', 'title': 'The $1M Contract Pitch',
+                'content': 'You are at the final slide of a major vendor pitch. Deliver an impactful closing statement that summarizes your ROI and directly asks for their business.',
+                'difficulty': 3, 'time_limit': 90, 'tags': ['speaking', 'presentation', 'sales']
             },
             {
-                'type': 'speaking_prompt', 'category': 'Interviews', 'title': 'Behavioral STAR Question',
-                'content': 'Interview Question: "Tell me about a time you had to deal with a difficult team member." Use the STAR method (Situation, Task, Action, Result).',
-                'difficulty': 3, 'time_limit': 180, 'tags': ['speaking', 'interview', 'STAR']
-            },
-            {
-                'type': 'speaking_prompt', 'category': 'Real-Life Problem Solving', 'title': 'The Angry Customer',
-                'content': 'Roleplay: You are a manager. A customer is angry because their delivery is 3 days late. De-escalate the situation and offer a solution.',
-                'difficulty': 3, 'time_limit': 120, 'tags': ['speaking', 'problem-solving', 'de-escalation']
-            },
-            {
-                'type': 'speaking_prompt', 'category': 'Tone & Emotion', 'title': 'Delivering Bad News',
-                'content': 'You have to tell your team that the deadline for your project has been moved up by two weeks. Deliver this news with an encouraging but urgent tone.',
-                'difficulty': 3, 'time_limit': 90, 'tags': ['speaking', 'tone', 'empaty']
+                'type': 'speaking_prompt', 'category': 'Public Speaking (Speeches)', 'title': 'Industry Keynote Hook',
+                'content': 'You are opening a keynote speech at a major FinTech summit. Deliver the first 60 seconds of your speech. Focus on an attention-grabbing hook and establishing absolute authority.',
+                'difficulty': 3, 'time_limit': 120, 'tags': ['speaking', 'public-speaking', 'keynote']
             }
         ]
         
