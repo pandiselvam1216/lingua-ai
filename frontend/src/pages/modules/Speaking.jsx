@@ -126,19 +126,22 @@ export default function Speaking() {
         setSubmitting(true)
         try {
             const elapsed = Math.max(1, totalTime - timeLeft)
-            const result = evaluateSpeaking(transcript, elapsed)
+            const result = await evaluateSpeaking(
+                transcript, 
+                elapsed, 
+                currentPrompt?.title, 
+                currentPrompt?.category || 'General Speaking'
+            )
 
-            setTimeout(() => {
-                setFeedback(result)
-                setSubmitting(false)
-                if (!completedTopics.includes(currentIndex)) {
-                    setCompletedTopics(prev => [...prev, currentIndex])
-                }
-                saveModuleScore('speaking', result.score, elapsed)
-            }, 1000)
+            setFeedback(result)
+            setSubmitting(false)
+            if (!completedTopics.includes(currentIndex)) {
+                setCompletedTopics(prev => [...prev, currentIndex])
+            }
         } catch (error) {
             console.error('Failed to submit:', error)
             setSubmitting(false)
+            showAlert('Evaluation Failed', 'There was an issue reaching the AI service. Please try again.', 'error')
         }
     }
 
@@ -276,27 +279,66 @@ export default function Speaking() {
                                     </span>
                                 </div>
                             </div>
-                            <div className="grid-2col" style={{ marginBottom: '24px' }}>
-                                {Object.entries(feedback.feedback || {}).map(([key, value]) => (
-                                    <div key={key} style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px' }}>
+                            <div style={{ display: 'grid', gap: '20px', marginBottom: '24px' }}>
+                                {/* Primary Metrics */}
+                                <div className="grid-2col" style={{ gap: '16px' }}>
+                                    <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                            {/* Hide tick for time management as requested */}
-                                            {key.toLowerCase() !== 'time management' && key.toLowerCase() !== 'time_management' && (
-                                                <CheckCircle size={16} style={{ color: '#22C55E' }} />
-                                            )}
-                                            <span style={{ fontSize: '13px', fontWeight: '600', textTransform: 'capitalize' }}>{key}</span>
+                                            <Award size={16} style={{ color: '#3B82F6' }} />
+                                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>CLARITY SCORE</span>
                                         </div>
-                                        <p style={{ fontSize: '14px', color: '#6B7280', margin: 0, lineHeight: '1.5' }}>{value}</p>
+                                        <p style={{ fontSize: '24px', fontWeight: '800', margin: 0, color: '#1E40AF' }}>{feedback.clarity_score}/10</p>
                                     </div>
-                                ))}
+                                    <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                            <Clock size={16} style={{ color: '#F59E0B' }} />
+                                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>FLUENCY</span>
+                                        </div>
+                                        <p style={{ fontSize: '14px', color: '#4B5563', margin: 0, lineHeight: '1.4' }}>{feedback.fluency_feedback}</p>
+                                    </div>
+                                </div>
+
+                                {/* Grammar Issues */}
+                                <div style={{ padding: '16px', backgroundColor: '#FEF2F2', borderRadius: '12px', border: '1px solid #FEE2E2' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                        <AlertCircle size={16} style={{ color: '#EF4444' }} />
+                                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#991B1B' }}>GRAMMAR & PRAGMATICS</span>
+                                    </div>
+                                    <ul style={{ margin: 0, paddingLeft: '20px', display: 'grid', gap: '6px' }}>
+                                        {feedback.grammar_issues?.map((issue, i) => (
+                                            <li key={i} style={{ fontSize: '13px', color: '#B91C1C' }}>{issue}</li>
+                                        ))}
+                                        {(!feedback.grammar_issues || feedback.grammar_issues.length === 0) && (
+                                            <li style={{ fontSize: '13px', color: '#059669' }}>Excellent grammatical accuracy!</li>
+                                        )}
+                                    </ul>
+                                </div>
+
+                                {/* Suggested Improvement */}
+                                <div style={{ padding: '16px', backgroundColor: '#F0FDF4', borderRadius: '12px', border: '1px solid #DCFCE7' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                        <CheckCircle size={16} style={{ color: '#10B981' }} />
+                                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#065F46' }}>HOW TO IMPROVE</span>
+                                    </div>
+                                    <p style={{ fontSize: '14px', color: '#047857', margin: 0, fontStyle: 'italic', lineHeight: '1.6' }}>
+                                        "{feedback.suggested_improvement}"
+                                    </p>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                    <span style={{ fontSize: '11px', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        AI Confidence: {feedback.confidence_level}
+                                    </span>
+                                </div>
                             </div>
+
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                                 {currentIndex < prompts.length - 1 ? (
                                     <button onClick={() => { setCurrentIndex(i => i + 1); handleReset(); }} className="btn btn-primary">
                                         Next Topic <ChevronRight size={18} />
                                     </button>
                                 ) : (
-                                    <button onClick={() => setShowCompletionTracker(true)} className="btn btn-primary">
+                                    <button onClick={() => setShowCompletionTracker(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)' }}>
                                         <Award size={18} /> Finish Module
                                     </button>
                                 )}

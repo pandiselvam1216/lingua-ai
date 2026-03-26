@@ -78,8 +78,46 @@ const chat = async (systemPrompt, userMessage) => {
 // --- AI Feedback Functions ---
 
 /**
- * Get AI feedback for a speaking session
+ * Get AI feedback for a speaking session with detailed clarity check
  */
+export const evaluateSpeakingAI = async (transcript, topic = "General Speaking", category = "Conversations") => {
+    const system = `You are a Senior English Pedagogy Specialist and IELTS Examiner. 
+Task: Evaluate a learner's spoken response for clarity, fluency, and grammar.
+
+[Module Context]
+Section: ${category}
+Topic: ${topic}
+
+[Assessment Rubric]
+1. Clarity (1-10): Ability to be understood. Beginner: Focus on words. Advanced: Focus on nuance.
+2. Fluency: Evaluation of pace, hesitation, and filler words.
+3. Grammar: Accuracy of tense, articles, and sentence structure.
+4. Suggested Improvement: A version of the response that is one level higher than the student's current level.
+
+Return ONLY valid JSON in this exact format:
+{
+  "clarity_score": 8,
+  "fluency_feedback": "Brief feedback on pace and flow.",
+  "grammar_issues": ["Specific issue 1", "Specific issue 2"],
+  "suggested_improvement": "A better way to say it.",
+  "confidence_level": "High/Medium/Low"
+}
+Ensure the feedback is constructive and encouraging.`
+
+    const user = `Analyze this spoken transcript: "${transcript.substring(0, 1000)}"`
+
+    const result = await chat(system, user)
+    if (!result) return null
+
+    try {
+        const jsonMatch = result.match(/\{[\s\S]*\}/)
+        if (jsonMatch) return JSON.parse(jsonMatch[0])
+    } catch (e) {
+        console.error('AI Speaking Analysis failed to parse JSON:', e)
+    }
+    return null
+}
+
 export const getAISpeakingFeedback = async (transcript, topic, wpm) => {
     const system = `You are an expert English speaking coach specializing in Indian English (IndE). 
 Give concise, encouraging, and specific feedback in 2-3 sentences. 

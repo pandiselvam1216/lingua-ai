@@ -133,58 +133,60 @@ export const saveModuleScore = (type, score, timeSpent = 0) => {
 
 // --- Scoring Logic: Speaking ---
 
-export const evaluateSpeaking = (transcript, timeElapsed, targetText = "") => {
-    // 1. Fluency: Words Per Minute (WPM)
-    const words = transcript.trim().split(/\s+/).filter(w => w.length > 0);
-    const wordCount = words.length;
-    const minutes = timeElapsed / 60;
-    const wpm = minutes > 0 ? Math.round(wordCount / minutes) : 0;
+export const evaluateSpeaking = async (transcript, timeElapsed, topic = "General Speaking", category = "Conversations") => {
+    try {
+        // 1. Core Metrics (Calculated locally)
+        const words = transcript.trim().split(/\s+/).filter(w => w.length > 0);
+        const wordCount = words.length;
+        const minutes = timeElapsed / 60;
+        const wpm = minutes > 0 ? Math.round(wordCount / minutes) : 0;
 
-    // Ideal WPM range for learners: 100-150. 
-    // Score based on proximity to this range.
-    let fluencyScore = 0;
-    if (wpm >= 100 && wpm <= 160) fluencyScore = 100;
-    else if (wpm < 100) fluencyScore = (wpm / 100) * 100;
-    else fluencyScore = Math.max(0, 100 - ((wpm - 160) * 0.5));
+        // 2. Call AI for Deep Clarity Check
+        const aiResult = await evaluateSpeakingAI(transcript, topic, category)
+        
+        if (aiResult) {
+            // Factor AI Clarity Score into normalized 100-point score
+            const finalScore = aiResult.clarity_score * 10
+            
+            saveModuleScore('speaking', finalScore, timeElapsed)
 
-    // 2. Clarity/Length Factor (Simple heuristic since we don't have audio analysis)
-    // Longer speech generally indicates better attempt in this context.
-    const lengthScore = Math.min(100, (wordCount / 50) * 100); // Caps at 50 words
+            return {
+                success: true,
+                score: finalScore,
+                ...aiResult,
+                // Merging existing WPM logic into feedback for completeness
+                local_metrics: { wpm, wordCount }
+            }
+        }
 
-    // 3. Final Score
-    const finalScore = Math.round((fluencyScore * 0.6) + (lengthScore * 0.4));
+        // Fallback: Logic if AI is unavailable (Existing rule-based)
+        let fluencyScore = 0;
+        if (wpm >= 100 && wpm <= 160) fluencyScore = 100;
+        else if (wpm < 100) fluencyScore = (wpm / 100) * 100;
+        else fluencyScore = Math.max(0, 100 - ((wpm - 160) * 0.5));
 
-    // 4. Generate Feedback
-    const feedback = {
-        fluency: wpm < 80 ? "Try to speak a bit faster." : wpm > 160 ? "Slow down a little for clarity." : "Good speaking pace!",
-        clarity: lengthScore < 50 ? "Try to elaborate more on your answer." : "Good amount of detail.",
-        pronunciation: "Clear articulation detected.", // Mock placeholder as we can't do real pronun without backend
-        grammar: "Speech flow is coherent."
-    };
+        const lengthScore = Math.min(100, (wordCount / 50) * 100);
+        const finalScore = Math.round((fluencyScore * 0.6) + (lengthScore * 0.4));
 
-    // Filler words training from feedback trainer
-    const transcriptLower = transcript.toLowerCase();
-    const trainedFeedback = [];
-    if (transcriptLower.includes('um')) trainedFeedback.push("Try to minimize filler words like 'um'. Pausing is a better way to gather your thoughts.");
-    if (transcriptLower.includes('like')) trainedFeedback.push("Avoid overusing 'like' as a filler word. It can distract from your message.");
-    if (transcriptLower.includes('uh')) trainedFeedback.push("Using 'uh' frequently can make you sound less confident. Try taking a brief, silent pause instead.");
-    if (transcriptLower.includes('so ')) trainedFeedback.push("Vary your transitions instead of starting sentences with 'so'.");
-    if (transcriptLower.includes('basically')) trainedFeedback.push("Overusing words like 'basically' can detract from the substance of your point.");
-    if (transcriptLower.includes('you know')) trainedFeedback.push("Relying on 'you know' can weaken your statements. State your points with confidence.");
-    if (transcriptLower.includes('i mean')) trainedFeedback.push("Using 'I mean' frequently might make it seem like you're second-guessing yourself.");
+        const feedback = {
+            clarity_score: Math.round(finalScore / 10),
+            fluency_feedback: wpm < 80 ? "Try to speak a bit faster." : wpm > 160 ? "Slow down a little for clarity." : "Good speaking pace!",
+            grammar_issues: ["Speech flow is coherent (Local analysis only)."],
+            suggested_improvement: "Try to elaborate more on your answer to improve depth.",
+            confidence_level: "Medium"
+        };
 
-    if (trainedFeedback.length > 0) {
-        feedback.improvements = trainedFeedback.join(' ');
+        saveModuleScore('speaking', finalScore, timeElapsed);
+
+        return {
+            success: true,
+            score: finalScore,
+            ...feedback
+        };
+    } catch (error) {
+        console.error("Speaking evaluation failed:", error);
+        return { success: false, score: 0, feedback: { clarity_score: 0 } };
     }
-
-    // Save
-    saveModuleScore('speaking', finalScore, timeElapsed);
-
-    return {
-        success: true,
-        score: finalScore,
-        feedback: feedback
-    };
 };
 
 

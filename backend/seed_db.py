@@ -140,23 +140,82 @@ def seed_data():
             }
         ]
         
-        # Speaking Prompts
+        # Speaking Prompts (Expanded Curriculum)
         speaking_prompts = [
+            # Beginner
             {
-                'type': 'speaking_prompt',
-                'title': 'Describe Your Hometown',
-                'content': 'Describe your hometown. What is it known for, and what do you like most about it?',
-                'difficulty': 1,
-                'time_limit': 120,
-                'tags': ['speaking', 'description']
+                'type': 'speaking_prompt', 'category': 'Pronunciation', 'title': 'Minimal Pairs Drill',
+                'content': 'Read the following words clearly: Sheep, Ship, Beat, Bit, Luke, Look. Ensure you clearly differentiate the vowel sounds.',
+                'difficulty': 1, 'time_limit': 60, 'tags': ['speaking', 'pronunciation', 'phonetics']
             },
             {
-                'type': 'speaking_prompt',
-                'title': 'Technology in Education',
-                'content': 'Do you think technology has improved the quality of education? Why or why not?',
-                'difficulty': 3,
-                'time_limit': 180,
-                'tags': ['speaking', 'opinion']
+                'type': 'speaking_prompt', 'category': 'Self-Introduction', 'title': 'The Elevator Pitch',
+                'content': 'You have 30 seconds to introduce yourself to a potential employer. State your name, profession, and one key strength.',
+                'difficulty': 1, 'time_limit': 60, 'tags': ['speaking', 'introduction', 'professional']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Description', 'title': 'Describe a Lost Item',
+                'content': 'You have lost your backpack at the train station. Describe it in detail to the security officer (color, brand, contents, distinguishing marks).',
+                'difficulty': 1, 'time_limit': 90, 'tags': ['speaking', 'description', 'visual']
+            },
+            
+            # Intermediate
+            {
+                'type': 'speaking_prompt', 'category': 'Conversations', 'title': 'Ordering at a Restaurant',
+                'content': 'Roleplay: You are at a restaurant. Order a main course, ask to substitute the fries for a salad, and inquire if the soup is vegetarian.',
+                'difficulty': 2, 'time_limit': 90, 'tags': ['speaking', 'conversation', 'roleplay']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Instructions', 'title': 'Tech Support for a Friend',
+                'content': 'Explain to your grandmother, step-by-step, how to connect her smartphone to a new Wi-Fi network.',
+                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'instructions', 'sequential']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Opinions', 'title': 'Remote Work vs. Office',
+                'content': 'Express your opinion on whether remote work is better than working in an office. Provide at least two reasons to support your view.',
+                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'opinion', 'argumentation']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Storytelling', 'title': 'A Memorable Holiday',
+                'content': 'Narrate a story about a memorable holiday you took. Focus on using past tenses and sequencing words (first, then, after that).',
+                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'storytelling', 'past-tense']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Digital Communication', 'title': 'Professional Voicemail',
+                'content': 'Record a professional out-of-office voicemail message stating you are away until Monday and providing an alternative contact.',
+                'difficulty': 2, 'time_limit': 60, 'tags': ['speaking', 'digital', 'professional']
+            },
+            
+            # Advanced
+            {
+                'type': 'speaking_prompt', 'category': 'Discussions', 'title': 'Universal Basic Income',
+                'content': 'In a simulated group discussion, argue FOR the implementation of Universal Basic Income. Address one potential counter-argument.',
+                'difficulty': 3, 'time_limit': 180, 'tags': ['speaking', 'discussion', 'persuasion']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Presentations', 'title': 'Project Update',
+                'content': 'Present a brief update on a hypothetical project. Outline what has been completed, upcoming milestones, and one current blocker.',
+                'difficulty': 3, 'time_limit': 180, 'tags': ['speaking', 'presentation', 'business']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Public Speaking', 'title': 'Impromptu: The Future of AI',
+                'content': 'Speak for 2 minutes on "How Artificial Intelligence will change daily life in the next decade." Focus on opening impact and clear structure.',
+                'difficulty': 3, 'time_limit': 120, 'tags': ['speaking', 'public-speaking', 'impromptu']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Interviews', 'title': 'Behavioral STAR Question',
+                'content': 'Interview Question: "Tell me about a time you had to deal with a difficult team member." Use the STAR method (Situation, Task, Action, Result).',
+                'difficulty': 3, 'time_limit': 180, 'tags': ['speaking', 'interview', 'STAR']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Real-Life Problem Solving', 'title': 'The Angry Customer',
+                'content': 'Roleplay: You are a manager. A customer is angry because their delivery is 3 days late. De-escalate the situation and offer a solution.',
+                'difficulty': 3, 'time_limit': 120, 'tags': ['speaking', 'problem-solving', 'de-escalation']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Tone & Emotion', 'title': 'Delivering Bad News',
+                'content': 'You have to tell your team that the deadline for your project has been moved up by two weeks. Deliver this news with an encouraging but urgent tone.',
+                'difficulty': 3, 'time_limit': 90, 'tags': ['speaking', 'tone', 'empaty']
             }
         ]
         

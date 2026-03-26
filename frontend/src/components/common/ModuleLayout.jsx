@@ -118,8 +118,17 @@ export default function ModuleLayout({
                                     }}>
                                         {q.title || `Question ${idx + 1}`}
                                     </p>
+                                    {q.category && (
+                                        <p style={{ 
+                                            fontSize: '11px', margin: '2px 0 0 0', textTransform: 'uppercase', 
+                                            letterSpacing: '0.05em', color: currentIndex === idx ? iconColor : '#9CA3AF' 
+                                        }}>
+                                            {q.category}
+                                        </p>
+                                    )}
                                 </div>
                                 {completedQuestions.includes(idx) && q.title?.toLowerCase() !== 'time management' && <Check size={14} style={{ color: iconColor }} />}
+
                             </motion.button>
                         ))}
                     </div>
