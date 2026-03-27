@@ -140,23 +140,74 @@ def seed_data():
             }
         ]
         
-        # Speaking Prompts
+        # Speaking Prompts (Antigravity Business & Corporate Curriculum)
         speaking_prompts = [
+            # Stage 1: Core Mechanics
             {
-                'type': 'speaking_prompt',
-                'title': 'Describe Your Hometown',
-                'content': 'Describe your hometown. What is it known for, and what do you like most about it?',
-                'difficulty': 1,
-                'time_limit': 120,
-                'tags': ['speaking', 'description']
+                'type': 'speaking_prompt', 'category': 'Proper Pronunciation', 'title': 'Corporate Vocabulary Drill',
+                'content': 'Read the following terms distinctly, focusing on syllable stress: Amortization, Synergistic, Quantitative, Deliverable, Remuneration.',
+                'difficulty': 1, 'time_limit': 60, 'tags': ['speaking', 'pronunciation', 'business']
             },
             {
-                'type': 'speaking_prompt',
-                'title': 'Technology in Education',
-                'content': 'Do you think technology has improved the quality of education? Why or why not?',
-                'difficulty': 3,
-                'time_limit': 180,
-                'tags': ['speaking', 'opinion']
+                'type': 'speaking_prompt', 'category': 'Tone & Emotion', 'title': 'Delivering Bad Q3 News',
+                'content': 'You must inform the board that Q3 revenue missed projections by 12%. Deliver this statement with a tone that is serious, accountable, yet forward-looking and confident.',
+                'difficulty': 3, 'time_limit': 90, 'tags': ['speaking', 'tone', 'corporate']
+            },
+
+            # Stage 2: Everyday Operations
+            {
+                'type': 'speaking_prompt', 'category': 'Self-Introduction', 'title': 'The B2B Networking Pitch',
+                'content': 'You are at an industry conference. Introduce yourself to a high-value prospect in under 45 seconds. Include your name, your firm\'s core value proposition, and an engaging hook.',
+                'difficulty': 2, 'time_limit': 60, 'tags': ['speaking', 'introduction', 'networking']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Description', 'title': 'Product Architecture Overview',
+                'content': 'Without using slides, verbally describe the layout and core user flow of your company\'s new software dashboard to a non-technical stakeholder.',
+                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'description', 'product']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Instructions', 'title': 'Rolling Out Compliance Protocols',
+                'content': 'Explain the new 3-step mandatory data security protocol to your department. Use clear signposting (First, Next, Finally) so there is zero confusion.',
+                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'instructions', 'compliance']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Conversations', 'title': 'Client Small Talk',
+                'content': 'You are waiting in a virtual meeting lobby with a crucial client for 2 minutes before the CEO joins. Initiate and maintain professional, engaging small talk.',
+                'difficulty': 2, 'time_limit': 120, 'tags': ['speaking', 'conversation', 'client-relations']
+            },
+
+            # Stage 3: Complex Expression
+            {
+                'type': 'speaking_prompt', 'category': 'Storytelling', 'title': 'The Turnaround Narrative',
+                'content': 'Tell the story of a failing project that you or your team successfully turned around. Focus on the conflict, the strategic action taken, and the positive business outcome.',
+                'difficulty': 3, 'time_limit': 180, 'tags': ['speaking', 'storytelling', 'leadership']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Opinions', 'title': 'Defending a Strategic Pivot',
+                'content': 'State your opinion on shifting the company\'s marketing budget entirely from traditional print to AI-driven digital ads. Provide two data-backed reasons supporting your view.',
+                'difficulty': 3, 'time_limit': 120, 'tags': ['speaking', 'opinion', 'strategy']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Discussions', 'title': 'Mediating a Budget Dispute',
+                'content': 'The Sales and Engineering directors are arguing over the quarterly budget. Interject professionally, summarize both their concerns, and propose a diplomatic compromise.',
+                'difficulty': 3, 'time_limit': 120, 'tags': ['speaking', 'discussion', 'mediation']
+            },
+
+            # Stage 4: High-Stakes Environments
+            {
+                'type': 'speaking_prompt', 'category': 'Interviews', 'title': 'Executive Behavioral Interview',
+                'content': 'Answer the following executive interview question using the STAR method: "Describe a time you had to challenge a decision made by a senior stakeholder or CEO."',
+                'difficulty': 3, 'time_limit': 180, 'tags': ['speaking', 'interview', 'executive']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Presentations', 'title': 'The $1M Contract Pitch',
+                'content': 'You are at the final slide of a major vendor pitch. Deliver an impactful closing statement that summarizes your ROI and directly asks for their business.',
+                'difficulty': 3, 'time_limit': 90, 'tags': ['speaking', 'presentation', 'sales']
+            },
+            {
+                'type': 'speaking_prompt', 'category': 'Public Speaking (Speeches)', 'title': 'Industry Keynote Hook',
+                'content': 'You are opening a keynote speech at a major FinTech summit. Deliver the first 60 seconds of your speech. Focus on an attention-grabbing hook and establishing absolute authority.',
+                'difficulty': 3, 'time_limit': 120, 'tags': ['speaking', 'public-speaking', 'keynote']
             }
         ]
         
