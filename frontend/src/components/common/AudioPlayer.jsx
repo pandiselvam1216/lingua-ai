@@ -60,6 +60,12 @@ export default function AudioPlayer({ src, ttsConfig, text }) {
                     window.speechSynthesis.resume()
                 } else {
                     window.speechSynthesis.cancel() // Stop any current speech
+                    
+                    // Unstick the engine if it was paused from a previous tab or error
+                    if (window.speechSynthesis.paused) {
+                        window.speechSynthesis.resume()
+                    }
+                    
                     const utterance = new SpeechSynthesisUtterance(text)
                     
                     // Apply config if provided

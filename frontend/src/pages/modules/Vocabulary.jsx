@@ -82,7 +82,7 @@ function FlashcardMode({ words, onFinish }) {
     if (done) return <SummaryScreen score={results.filter(r => r === 'know').length} total={words.length} onRetry={() => { setIndex(0); setResults([]); setFlipped(false); setDone(false) }} onHome={onFinish} />
 
     return (
-        <div style={{ maxWidth: '500px', margin: '0 auto' }}>
+        <div style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '14px', fontWeight: 'bold', color: '#6B7280' }}>
                 <span>Card {index + 1} of {words.length}</span>
                 <span style={{ color: '#8B5CF6' }}>{results.filter(r => r === 'know').length} known</span>
@@ -144,18 +144,19 @@ function MultipleChoiceMode({ words, onFinish }) {
     if (done) return <SummaryScreen score={score} total={shuffled.length} onRetry={() => { setIndex(0); setScore(0); setSelected(null); setDone(false); setCurrentChoices(getChoices(shuffled[0], shuffled)) }} onHome={onFinish} />
 
     return (
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{ width: '100%', maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontWeight: 'bold', color: '#6B7280' }}>
                 <span>Question {index + 1} / {shuffled.length}</span>
                 <span style={{ color: '#8B5CF6' }}>Score: {score}</span>
             </div>
             
-            <div className="card" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', color: 'white', marginBottom: '24px', padding: '32px' }}>
-                <p style={{ fontSize: '14px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px', fontWeight: 'bold' }}>Which word matches this definition?</p>
-                <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>{question.definition}</p>
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+                <div className="card" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', color: 'white', padding: '24px' }}>
+                    <p style={{ fontSize: '12px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 'bold' }}>Definition</p>
+                    <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{question.definition}</p>
+                </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="grid-2col">
                 {currentChoices.map(c => {
                     const isCorrect = c.word === question.word
                     const isSelected = selected === c.word
@@ -172,6 +173,7 @@ function MultipleChoiceMode({ words, onFinish }) {
                         </button>
                     )
                 })}
+                </div>
             </div>
         </div>
     )
@@ -207,7 +209,7 @@ function FillBlankMode({ words, onFinish }) {
     if (done) return <SummaryScreen score={score} total={shuffled.length} onRetry={() => { setIndex(0); setScore(0); setInput(''); setStatus(null); setDone(false) }} onHome={onFinish} />
 
     return (
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{ width: '100%', maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontWeight: 'bold', color: '#6B7280' }}>
                 <span>Question {index + 1} / {shuffled.length}</span>
                 <span style={{ color: '#8B5CF6' }}>Score: {score}</span>
@@ -329,7 +331,7 @@ export default function Vocabulary() {
     const isSaved = (word) => savedWords.some(w => w.word.toLowerCase() === word.toLowerCase())
 
     return (
-        <div className="page-container" style={{ padding: '32px 24px' }}>
+        <div className="page-container" style={{ padding: '24px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
@@ -345,19 +347,19 @@ export default function Vocabulary() {
                 </button>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px', gap: '24px', flexWrap: 'wrap' }}>
-                <nav style={{ display: 'flex', padding: '4px', background: 'white', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px', gap: '16px', flexWrap: 'wrap' }}>
+                <nav style={{ display: 'flex', padding: '4px', background: 'white', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflowX: 'auto', maxWidth: '100%' }}>
                     <button onClick={() => setActiveTab('search')} className="btn" style={{ background: activeTab === 'search' ? '#8B5CF6' : 'transparent', color: activeTab === 'search' ? 'white' : '#6B7280', fontWeight: 'bold', padding: '10px 20px', borderRadius: '8px' }}><Search size={16} /> Search</button>
                     <button onClick={() => setActiveTab('saved')} className="btn" style={{ background: activeTab === 'saved' ? '#8B5CF6' : 'transparent', color: activeTab === 'saved' ? 'white' : '#6B7280', fontWeight: 'bold', padding: '10px 20px', borderRadius: '8px' }}><BookmarkCheck size={16} /> Saved ({savedWords.length})</button>
                     <button onClick={() => setActiveTab('trainer')} className="btn" style={{ background: activeTab === 'trainer' ? '#8B5CF6' : 'transparent', color: activeTab === 'trainer' ? 'white' : '#6B7280', fontWeight: 'bold', padding: '10px 20px', borderRadius: '8px' }}><Dumbbell size={16} /> Trainer</button>
                 </nav>
-                <form onSubmit={handleSearch} style={{ flex: 1, position: 'relative', minWidth: '300px' }}>
+                <form onSubmit={handleSearch} style={{ flex: '1 1 300px', position: 'relative' }}>
                     <input type="text" value={searchWord} onChange={e => setSearchWord(e.target.value)} placeholder="Type a word..." style={{ width: '100%', padding: '14px 20px 14px 48px', borderRadius: '12px', border: '2px solid #E5E7EB', fontSize: '15px', outline: 'none' }} />
                     <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
                 </form>
             </div>
 
-            <div className="card" style={{ padding: '32px' }}>
+            <div className="card" style={{ padding: '24px 16px' }}>
                 {activeTab === 'search' && (
                     <div>
                         {!searchResult && !searching && <div style={{ textAlign: 'center', padding: '64px', color: '#6B7280' }}><Sparkles size={48} color="#D1D5DB" style={{ marginBottom: '16px' }} /><p>Search for a word above!</p></div>}
@@ -410,7 +412,7 @@ export default function Vocabulary() {
                 {activeTab === 'trainer' && <TrainerTab savedWords={savedWords} completedModes={completedModes} onModeComplete={m => setCompletedModes(p => p.includes(m) ? p : [...p, m])} />}
             </div>
             
-            <ModuleRulesModal isOpen={showRules} onClose={() => setShowRules(false)} title="Vocabulary Rules" description="Follow these guidelines to expand your vocabulary:" rules={["Search words offline or online", "Train your memory using Flashcards.", "Verify meaning using MCQs", "Test spelling via typing mode"]} />
+            <ModuleRulesModal isOpen={showRules} onClose={() => setShowRules(false)} moduleName="Vocabulary" rules={["Search words offline or online", "Train your memory using Flashcards.", "Verify meaning using MCQs", "Test spelling via typing mode"]} />
         </div>
     )
 }

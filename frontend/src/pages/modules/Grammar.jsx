@@ -105,9 +105,9 @@ export default function Grammar() {
 
     if (!activeSubmodule) {
         return (
-            <div className="page-container" style={{ padding: '40px 32px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
+            <div className="page-container" style={{ padding: '24px 16px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
                 {/* Header Section */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
                     <button
                         onClick={() => window.location.href = '/dashboard'}
                         style={{
@@ -120,13 +120,13 @@ export default function Grammar() {
                         <ChevronLeft size={20} />
                     </button>
                     <div>
-                        <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#111827', margin: 0 }}>Grammar Categories</h1>
-                        <p style={{ color: '#6B7280', margin: '4px 0 0', fontSize: '16px' }}>Strengthen your grammar foundations topic-wise</p>
+                        <h1 style={{ fontWeight: '800', color: '#111827', margin: 0 }}>Grammar Categories</h1>
+                        <p style={{ color: '#6B7280', margin: '4px 0 0', fontSize: '15px' }}>Topic-wise practice</p>
                     </div>
                 </div>
 
                 {/* Submodules Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px' }}>
+                <div className="grid-3col">
                     {SUBMODULES.map((sub, idx) => (
                         <motion.div
                             key={sub.id}
@@ -137,17 +137,15 @@ export default function Grammar() {
                                 setActiveSubmodule(sub.id)
                                 handleReset()
                             }}
+                            className="card"
                             style={{
-                                backgroundColor: 'white',
-                                borderRadius: '24px',
-                                padding: '32px',
+                                borderRadius: '20px',
+                                padding: '24px',
                                 cursor: 'pointer',
-                                border: '1px solid #F3F4F6',
                                 transition: 'all 0.3s ease',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '20px',
+                                gap: '16px',
                                 position: 'relative',
                                 overflow: 'hidden'
                             }}
@@ -231,11 +229,11 @@ export default function Grammar() {
                     </span>
                 </div>
 
-                <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '32px', lineHeight: '1.6' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '24px', lineHeight: '1.6' }}>
                     {currentQuestion?.content}
                 </h2>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
+                <div className="grid-2col" style={{ marginBottom: '24px' }}>
                     {currentQuestion?.options?.map((option, idx) => {
                         const isSelected = selectedAnswer === option.value
                         const isCorrectOption = option.value === currentQuestion.correct_answer

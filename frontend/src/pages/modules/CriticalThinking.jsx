@@ -151,7 +151,7 @@ export default function CriticalThinking() {
     if (loading) return null
 
     return (
-        <div className="page-container" style={{ padding: '32px 24px' }}>
+        <div className="page-container" style={{ padding: '24px 16px' }}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
@@ -160,11 +160,11 @@ export default function CriticalThinking() {
                             <Brain size={24} />
                         </div>
                         <div>
-                            <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px' }}>Critical Thinking (JAM)</h1>
-                            <p style={{ color: '#6B7280', margin: 0 }}>Just A Minute: Develop analytical thinking and communication skills</p>
+                            <h1 style={{ fontWeight: '800', margin: '0 0 4px' }}>Critical Thinking (JAM)</h1>
+                            <p style={{ color: '#6B7280', margin: 0, fontSize: '15px' }}>Analytical thinking and communication skills</p>
                         </div>
                     </div>
-                    <button onClick={() => setShowRules(true)} className="btn btn-secondary">
+                    <button onClick={() => setShowRules(true)} className="btn btn-secondary" style={{ padding: '10px 16px' }}>
                         <Info size={16} /> Instructions
                     </button>
                 </div>
@@ -205,15 +205,15 @@ export default function CriticalThinking() {
                                 </div>
 
                                 {/* Prompt & Input area */}
-                                <div className="card" style={{ padding: '32px' }}>
+                                <div className="card" style={{ padding: '24px 20px' }}>
                                     <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>{currentPrompt.title}</h2>
-                                    <p style={{ fontSize: '18px', color: '#4B5563', marginBottom: '32px' }}>{currentPrompt.content}</p>
+                                    <p style={{ fontSize: '18px', color: '#4B5563', marginBottom: '24px' }}>{currentPrompt.content}</p>
 
                                     {mode === 'written' ? (
                                         <textarea
                                             value={response} onChange={(e) => setResponse(e.target.value)} disabled={!!result}
                                             placeholder="Type your response here... Start the timer to begin!"
-                                            style={{ width: '100%', minHeight: '200px', padding: '24px', borderRadius: '16px', border: '2px solid #E5E7EB', fontSize: '16px', outline: 'none', background: '#F9FAFB', resize: 'vertical', marginBottom: '24px', boxSizing: 'border-box' }}
+                                            style={{ width: '100%', minHeight: '200px', padding: '20px', borderRadius: '16px', border: '2px solid #E5E7EB', fontSize: '16px', outline: 'none', background: '#F9FAFB', resize: 'vertical', marginBottom: '24px', boxSizing: 'border-box' }}
                                         />
                                     ) : (
                                         <div style={{ width: '100%', minHeight: '200px', padding: '24px', borderRadius: '16px', border: `2px solid ${isRecording ? '#EC4899' : '#E5E7EB'}`, background: isRecording ? '#FDF2F8' : '#F9FAFB', marginBottom: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>

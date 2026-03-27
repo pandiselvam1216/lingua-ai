@@ -183,10 +183,10 @@ export default function ListeningModulePage() {
                             </Link>
                             <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#111827', margin: 0 }}>Listening Categories</h1>
                         </div>
-                        <p style={{ color: '#6B7280', margin: 0, fontSize: '16px' }}>Select a specialized listening area to begin your practice</p>
+                        <p style={{ color: '#6B7280', margin: 0, fontSize: '15px' }}>Master specialized listening skills</p>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+                    <div className="grid-3col">
                         {LISTENING_CATEGORIES.map((cat) => {
                             const Icon = cat.icon
                             return (

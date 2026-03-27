@@ -54,18 +54,29 @@ export default function Dashboard() {
             const updatedMetrics = checkAndIncrementStreak();
 
             // Try backend API first, fall back to local
-            const res = await api.get('/dashboard/stats')
-            const apiStats = res.data;
+            const [statsRes, activityRes] = await Promise.all([
+                api.get('/dashboard/stats'),
+                api.get('/dashboard/activity?days=7')
+            ]);
+
+            const apiStats = statsRes.data;
+            const activityData = activityRes.data?.daily_activity || [];
+
             if (apiStats) {
-                // The backend API might wrap data differently, adapt if needed.
-                // But assuming it matches what we expect or we fallback.
                 setStats({ 
-                    overallScore: apiStats.overall_score || apiStats.overallScore || 0,
-                    modulesCompleted: apiStats.total_attempts || apiStats.modulesCompleted || 0,
+                    overallScore: apiStats.average_score || 0,
+                    modulesCompleted: apiStats.total_attempts || 0,
                     streakDays: apiStats.streakDays || updatedMetrics.streakDays,
                     timeSpentMinutes: apiStats.timeSpentMinutes || updatedMetrics.timeSpentMinutes || 0
                 })
-                setChartData(apiStats.chart_data || apiStats.chartData || [])
+
+                // Format activity data for the chart: [{ day: 'Mon', score: 85 }, ...]
+                const formattedChartData = activityData.map(item => ({
+                    day: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
+                    score: item.average_score
+                }));
+
+                setChartData(formattedChartData)
             } else {
                 const localState = getLocalState()
                 setStats(localState.metrics)
@@ -132,26 +143,27 @@ export default function Dashboard() {
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '16px',
+                                gap: '12px',
+                                padding: '16px'
                             }}
                         >
                             <div style={{
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: '12px',
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '10px',
                                 backgroundColor: stat.bg,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 flexShrink: 0,
                             }}>
-                                <stat.icon size={24} style={{ color: stat.color }} />
+                                <stat.icon size={20} style={{ color: stat.color }} />
                             </div>
                             <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <div style={{ fontSize: 'clamp(18px, 3vw, 24px)', fontWeight: '700', color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {loadingStats ? <span style={{ color: '#D1D5DB' }}>—</span> : stat.value}
                                 </div>
-                                <div style={{ fontSize: '13px', color: '#6B7280' }}>{stat.label}</div>
+                                <div style={{ fontSize: '12px', color: '#6B7280', fontWeight: '500' }}>{stat.label}</div>
                             </div>
                         </div>
                     ))}
@@ -173,9 +185,6 @@ export default function Dashboard() {
                     >
                         <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '20px' }}>
                             Weekly Progress
-                            {!loadingStats && <span style={{ fontSize: '12px', fontWeight: '400', color: '#6B7280', marginLeft: '8px' }}>
-                                (from Supabase)
-                            </span>}
                         </h3>
                         {chartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height={250}>

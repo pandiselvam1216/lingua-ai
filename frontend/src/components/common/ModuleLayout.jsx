@@ -90,31 +90,37 @@ export default function ModuleLayout({
             {/* Main Layout */}
             <div className="grid-sidebar">
                 {/* Questions Sidebar */}
-                <div className="card" style={{ padding: '20px', height: 'fit-content' }}>
+                <div className="card" style={{ 
+                    padding: '16px', 
+                    height: 'fit-content',
+                    maxHeight: '400px', // Prevent sidebar from being too long on mobile
+                    overflowY: 'auto'
+                }}>
                     <h3 style={{
-                        fontSize: '14px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase',
-                        letterSpacing: '0.05em', marginBottom: '16px',
+                        fontSize: '12px', fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase',
+                        letterSpacing: '0.1em', marginBottom: '12px',
                     }}>
-                        Questions
+                        Exercise List
                     </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {questions.map((q, idx) => (
                             <motion.button
                                 key={q.id || idx}
                                 onClick={() => onSelectQuestion(idx)}
                                 whileHover={{ x: 4 }}
                                 style={{
-                                    padding: '12px 16px', borderRadius: '10px', border: 'none', cursor: 'pointer', textAlign: 'left',
+                                    padding: '10px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left',
                                     backgroundColor: currentIndex === idx ? '#F0FDF4' : 'transparent',
                                     borderLeft: currentIndex === idx ? `3px solid ${iconColor}` : '3px solid transparent',
-                                    display: 'flex', alignItems: 'center', gap: '8px'
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    minHeight: '40px' // Touch target size
                                 }}
                             >
                                 <div style={{ flex: 1, overflow: 'hidden' }}>
                                     <p style={{
-                                        fontSize: '14px', margin: 0, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden',
+                                        fontSize: '13px', margin: 0, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden',
                                         fontWeight: currentIndex === idx ? '600' : '500',
-                                        color: currentIndex === idx ? iconBgHover : '#374151',
+                                        color: currentIndex === idx ? iconBgHover : '#4B5563',
                                     }}>
                                         {q.title || `Question ${idx + 1}`}
                                     </p>
@@ -126,19 +132,19 @@ export default function ModuleLayout({
                 </div>
 
                 {/* Content Area */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     {/* Top Progress Bar */}
-                    <div className="card" style={{ padding: '16px 20px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                                Question {currentIndex + 1} of {questions.length}
-                                {completedQuestions.includes(currentIndex) && questions[currentIndex].title?.toLowerCase() !== 'time management' && <Check size={16} style={{ color: iconColor, marginLeft: '8px' }} />}
+                    <div className="card" style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>
+                                {currentIndex + 1} / {questions.length}
+                                {completedQuestions.includes(currentIndex) && questions[currentIndex].title?.toLowerCase() !== 'time management' && <Check size={14} style={{ color: iconColor, marginLeft: '6px' }} />}
                             </span>
-                            <span style={{ fontSize: '14px', color: '#6B7280' }}>
-                                {Math.round(questionProgress)}%
+                            <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: '500' }}>
+                                {Math.round(questionProgress)}% Done
                             </span>
                         </div>
-                        <div style={{ height: '6px', backgroundColor: '#E5E7EB', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ height: '5px', backgroundColor: '#F3F4F6', borderRadius: '3px', overflow: 'hidden' }}>
                             <motion.div animate={{ width: `${questionProgress}%` }} style={{
                                 height: '100%', borderRadius: '3px',
                                 background: `linear-gradient(90deg, ${iconColor} 0%, ${iconBgBase} 100%)`,

@@ -49,4 +49,27 @@ yarn-error.log*
 
 # OS
 .DS_Store
-Thumbs.db
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# Local Databases
+instance/
+backend/instance/
+*.db
+
+# Temp Test Scripts
+backend/check_admin.py
+backend/test_login.py
+backend/test_bcrypt.py
+backend/test_supabase.py
+backend/inspect_supabase.py
+backend/reset_supabase_schema.py
+backend/reset_db.py
+backend/fix_db.py
+backend/migrate_hierarchy.py
+backend/seed_hierarchy.py
+

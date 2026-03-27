@@ -111,9 +111,9 @@ export default function Writing() {
     // --- Submodule Selection Screen ---
     if (!activeSubmodule) {
         return (
-            <div className="page-container" style={{ padding: '40px 32px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
+            <div className="page-container" style={{ padding: '24px 16px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
                 {/* Header Section */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
                     <button
                         onClick={() => window.location.href = '/dashboard'}
                         style={{
@@ -128,13 +128,13 @@ export default function Writing() {
                         <ChevronLeft size={20} />
                     </button>
                     <div>
-                        <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#111827', margin: 0 }}>Writing Categories</h1>
-                        <p style={{ color: '#6B7280', margin: '4px 0 0', fontSize: '16px' }}>Select a specialized writing area to begin your practice</p>
+                        <h1 style={{ fontWeight: '800', color: '#111827', margin: 0 }}>Writing Categories</h1>
+                        <p style={{ color: '#6B7280', margin: '4px 0 0', fontSize: '15px' }}>Topic-wise practice</p>
                     </div>
                 </div>
 
                 {/* Submodules Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px' }}>
+                <div className="grid-3col">
                     {SUBMODULES.map((sub, idx) => (
                         <motion.div
                             key={sub.id}
@@ -146,14 +146,12 @@ export default function Writing() {
                                 handleReset()
                                 setCurrentIndex(0)
                             }}
+                            className="card"
                             style={{
-                                backgroundColor: 'white',
                                 borderRadius: '24px',
-                                padding: '32px',
+                                padding: '24px',
                                 cursor: 'pointer',
-                                border: '1px solid #F3F4F6',
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '20px',

@@ -57,6 +57,8 @@ export default function QuestionManagement() {
         tts_config: { voiceName: '', rate: 1, pitch: 1 }
     })
     const [topicSource, setTopicSource] = useState('tts')
+    const [submodules, setSubmodules] = useState([])
+    const [topics, setTopics] = useState([])
 
     const LISTENING_CATEGORIES = [
         { id: 'conversations', name: 'Conversations' },
@@ -90,6 +92,8 @@ export default function QuestionManagement() {
         audio_data: null,  // base64 data URL for listening audio
         pdf_name: null,    // uploaded
         sub_module: 'essay', // For writing/grammar module
+        submodule_id: '',
+        topic_id: '',
         category: 'conversations',
         listening_module_id: '',
         tts_config: {
@@ -114,21 +118,67 @@ export default function QuestionManagement() {
         localStorage.setItem(`neuralingua_questions_${activeModule}`, JSON.stringify(list))
 
     useEffect(() => {
+        fetchSubmodules()
         fetchQuestions()
         loadVoices()
         if (window.speechSynthesis) {
             window.speechSynthesis.onvoiceschanged = loadVoices
         }
+        return () => {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel()
+            }
+        }
     }, [activeModule])
 
+    const fetchSubmodules = async () => {
+        try {
+            const modulesResp = await api.get('/admin/modules')
+            const moduleSlug = activeModule === 'critical-thinking' ? 'critical-thinking' : activeModule
+            const module = modulesResp.data.find(m => m.slug === moduleSlug)
+            
+            if (module) {
+                const subResp = await api.get(`/admin/submodules/${module.id}`)
+                setSubmodules(subResp.data || [])
+            }
+        } catch (err) {
+            console.error('Failed to fetch submodules:', err)
+        }
+    }
+
+    const fetchTopics = async (subId) => {
+        if (!subId) {
+            setTopics([])
+            return
+        }
+        try {
+            const topResp = await api.get(`/admin/topics/${subId}`)
+            setTopics(topResp.data || [])
+        } catch (err) {
+            console.error('Failed to fetch topics:', err)
+        }
+    }
+
     const loadVoices = () => {
+        if (!window.speechSynthesis) return
         const voices = window.speechSynthesis.getVoices()
-        setAvailableVoices(voices)
-        if (voices.length > 0 && !formData.tts_config?.voiceName) {
-            setFormData(prev => ({
-                ...prev,
-                tts_config: { ...prev.tts_config, voiceName: voices[0].name }
-            }))
+        if (voices.length > 0) {
+            setAvailableVoices(voices)
+            
+            // Auto-select first voice if none selected
+            setFormData(prev => {
+                const hasVoice = prev.tts_config?.voiceName && voices.some(v => v.name === prev.tts_config.voiceName)
+                if (!hasVoice) {
+                    return {
+                        ...prev,
+                        tts_config: {
+                            ...(prev.tts_config || { rate: 1, pitch: 1 }),
+                            voiceName: voices[0].name
+                        }
+                    }
+                }
+                return prev
+            })
         }
     }
 
@@ -140,6 +190,8 @@ export default function QuestionManagement() {
         title: item.title,
         content: item.content,
         difficulty: item.difficulty || 1,
+        submodule_id: item.submodule_id || '',
+        topic_id: item.topic_id || '',
         options: item.options,
         correct_answer: item.correct_answer,
         explanation: item.explanation,
@@ -216,6 +268,7 @@ export default function QuestionManagement() {
                 const res = await listeningService.createContent(submitData)
                 setListeningModules(prev => [res.item, ...prev])
             }
+            if (window.speechSynthesis) window.speechSynthesis.cancel()
             setShowTopicModal(false)
             setAlertConfig({ isOpen: true, title: 'Success', message: 'Topic saved successfully', theme: 'success', type: 'alert' })
         } catch (err) {
@@ -250,15 +303,41 @@ export default function QuestionManagement() {
         const text = topicForm.content
         if (!text) return showAlert('Empty Content', 'Please enter some passage content to preview.', 'warning')
 
-        const utterance = new SpeechSynthesisUtterance(text)
-        if (topicForm.tts_config.voiceName) {
-            const voice = window.speechSynthesis.getVoices().find(v => v.name === topicForm.tts_config.voiceName)
-            if (voice) utterance.voice = voice
+        try {
+            // Unstick the engine if it was paused
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume()
+            }
+            window.speechSynthesis.cancel()
+            
+            // Wait a brief moment for previous speech to fully clear
+            setTimeout(() => {
+                const utterance = new SpeechSynthesisUtterance(text)
+                
+                if (topicForm.tts_config?.voiceName) {
+                    const voice = window.speechSynthesis.getVoices().find(v => v.name === topicForm.tts_config.voiceName)
+                    if (voice) utterance.voice = voice
+                }
+                
+                if (topicForm.tts_config) {
+                    utterance.rate = topicForm.tts_config.rate || 1
+                    utterance.pitch = topicForm.tts_config.pitch || 1
+                }
+                
+                // Keep utterance in memory to prevent GC issues
+                window._lastUtterance = utterance
+                
+                utterance.onerror = (e) => {
+                    console.error('SpeechSynthesis Error:', e)
+                    showAlert('Audio Error', 'Could not play preview. Please check your browser audio settings.', 'danger')
+                }
+                
+                window.speechSynthesis.speak(utterance)
+            }, 100)
+        } catch (err) {
+            console.error('TTS Preview failed:', err)
+            showAlert('Error', 'Failed to start voice preview.', 'danger')
         }
-        utterance.rate = topicForm.tts_config.rate
-        utterance.pitch = topicForm.tts_config.pitch
-        window.speechSynthesis.cancel()
-        window.speechSynthesis.speak(utterance)
     }
 
     const handleOpenModal = (question = null) => {
@@ -276,6 +355,8 @@ export default function QuestionManagement() {
                 pdf_name: question.pdf_name || null,
                 sub_module: question.sub_module || (activeModule === 'grammar' ? 'tense' : 'essay'),
                 category: question.category || 'conversations',
+                submodule_id: question.submodule_id || '',
+                topic_id: question.topic_id || '',
                 listening_module_id: question.listening_module_id || '',
                 tts_config: question.tts_config || {
                     voiceName: availableVoices[0]?.name || '',
@@ -283,6 +364,7 @@ export default function QuestionManagement() {
                     pitch: 1
                 }
             })
+            if (question.submodule_id) fetchTopics(question.submodule_id)
             setSourceType(question.tts_config ? 'tts' : 'file')
         } else {
             setEditingQuestion(null)
@@ -298,6 +380,8 @@ export default function QuestionManagement() {
                 pdf_name: null,
                 sub_module: activeModule === 'grammar' ? 'tense' : 'essay',
                 category: 'conversations',
+                submodule_id: '',
+                topic_id: '',
                 listening_module_id: '',
                 tts_config: {
                     voiceName: availableVoices[0]?.name || '',
@@ -305,6 +389,7 @@ export default function QuestionManagement() {
                     pitch: 1
                 }
             })
+            setTopics([])
             setSourceType('file')
         }
         setShowModal(true)
@@ -373,15 +458,55 @@ export default function QuestionManagement() {
     }
 
     const handlePreviewTTS = () => {
-        if (!window.speechSynthesis) return
-        window.speechSynthesis.cancel()
-        const textToSpeak = formData.tts_config.textOverride || formData.content || "Please enter some text to preview."
-        const utterance = new SpeechSynthesisUtterance(textToSpeak)
-        const voice = availableVoices.find(v => v.name === formData.tts_config.voiceName)
-        if (voice) utterance.voice = voice
-        utterance.rate = formData.tts_config.rate
-        utterance.pitch = formData.tts_config.pitch
-        window.speechSynthesis.speak(utterance)
+        if (!window.speechSynthesis) {
+            return showAlert('Not Supported', 'Speech synthesis is not supported in this browser.', 'warning')
+        }
+
+        const textToSpeak = formData.tts_config?.textOverride || formData.content || "Please enter some text to preview."
+        
+        try {
+            // Unstick the engine if it was paused
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume()
+            }
+            window.speechSynthesis.cancel()
+            
+            // Brief timeout to ensure previous speech is stopped before starting new one
+            setTimeout(() => {
+                const utterance = new SpeechSynthesisUtterance(textToSpeak)
+                
+                // Select specific voice if configured
+                const voiceName = formData.tts_config?.voiceName
+                if (voiceName) {
+                    const voice = availableVoices.find(v => v.name === voiceName)
+                    if (voice) utterance.voice = voice
+                }
+                
+                // Set rate and pitch safely
+                if (formData.tts_config) {
+                    utterance.rate = formData.tts_config.rate || 1
+                    utterance.pitch = formData.tts_config.pitch || 1
+                }
+                
+                // IMPORTANT: In some browsers, the utterance object must stay in scope or it might stop early
+                window._lastUtterance = utterance
+                
+                utterance.onstart = () => console.log('Speech preview started')
+                utterance.onend = () => console.log('Speech preview ended')
+                utterance.onerror = (e) => {
+                    console.error('Speech synthesis preview error:', e)
+                    // If it was cancelled by the user clicking again, ignore.
+                    if (e.error !== 'interrupted' && e.error !== 'canceled') {
+                        showAlert('Voice Preview Error', 'Unable to play voice preview. Please check your browser settings.', 'danger')
+                    }
+                }
+
+                window.speechSynthesis.speak(utterance)
+            }, 100)
+        } catch (err) {
+            console.error('Failed to run voice preview:', err)
+            showAlert('Error', 'Failed to start voice preview.', 'danger')
+        }
     }
 
     // Convert Google Drive sharing links to direct download URLs for audio playback
@@ -397,6 +522,7 @@ export default function QuestionManagement() {
     }
 
     const handleCloseModal = () => {
+        if (window.speechSynthesis) window.speechSynthesis.cancel()
         setShowModal(false)
         setEditingQuestion(null)
     }
@@ -451,6 +577,8 @@ export default function QuestionManagement() {
                         ? formData.audio_data   // base64 file upload — keep as-is
                         : convertDriveUrl(formData.audio_data) || null)
                     : null,
+                submodule_id: formData.submodule_id || null,
+                topic_id: formData.topic_id || null,
                 sub_module: (activeModule === 'writing' || activeModule === 'grammar') ? derivedSubModule || formData.sub_module : null,
                 tts_config: sourceType === 'tts' ? formData.tts_config : null,
             }
@@ -1051,7 +1179,6 @@ export default function QuestionManagement() {
                             </div>
 
                             <form onSubmit={handleSubmit}>
-
                                 {/* Title — Reading, Listening, Speaking, Writing & Grammar prompts */}
                                 {(activeModule === 'reading' || activeModule === 'listening' || activeModule === 'speaking' || activeModule === 'writing' || activeModule === 'grammar') && (
                                     <div style={{ marginBottom: '20px' }}>
@@ -1439,8 +1566,11 @@ export default function QuestionManagement() {
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>AI Voice</label>
                                                         <select
-                                                            value={formData.tts_config.voiceName}
-                                                            onChange={(e) => setFormData(p => ({ ...p, tts_config: { ...p.tts_config, voiceName: e.target.value } }))}
+                                                            value={formData.tts_config?.voiceName || ''}
+                                                            onChange={(e) => setFormData(p => ({ 
+                                                                ...p, 
+                                                                tts_config: { ...(p.tts_config || { rate: 1, pitch: 1 }), voiceName: e.target.value } 
+                                                            }))}
                                                             style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '13px' }}
                                                         >
                                                             {availableVoices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
@@ -1471,24 +1601,30 @@ export default function QuestionManagement() {
                                                     <div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                                             <label style={{ fontSize: '12px', color: '#64748B' }}>Speed</label>
-                                                            <span style={{ fontSize: '12px', color: '#3B82F6', fontWeight: 'bold' }}>{formData.tts_config.rate}x</span>
+                                                            <span style={{ fontSize: '12px', color: '#3B82F6', fontWeight: 'bold' }}>{formData.tts_config?.rate || 1}x</span>
                                                         </div>
                                                         <input
                                                             type="range" min="0.5" max="2" step="0.1"
-                                                            value={formData.tts_config.rate}
-                                                            onChange={(e) => setFormData(p => ({ ...p, tts_config: { ...p.tts_config, rate: parseFloat(e.target.value) } }))}
+                                                            value={formData.tts_config?.rate || 1}
+                                                            onChange={(e) => setFormData(p => ({ 
+                                                                ...p, 
+                                                                tts_config: { ...(p.tts_config || { voiceName: '', pitch: 1 }), rate: parseFloat(e.target.value) } 
+                                                            }))}
                                                             style={{ width: '100%' }}
                                                         />
                                                     </div>
                                                     <div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                                             <label style={{ fontSize: '12px', color: '#64748B' }}>Tune</label>
-                                                            <span style={{ fontSize: '12px', color: '#3B82F6', fontWeight: 'bold' }}>{formData.tts_config.pitch}</span>
+                                                            <span style={{ fontSize: '12px', color: '#3B82F6', fontWeight: 'bold' }}>{formData.tts_config?.pitch || 1}</span>
                                                         </div>
                                                         <input
                                                             type="range" min="0" max="2" step="0.1"
-                                                            value={formData.tts_config.pitch}
-                                                            onChange={(e) => setFormData(p => ({ ...p, tts_config: { ...p.tts_config, pitch: parseFloat(e.target.value) } }))}
+                                                            value={formData.tts_config?.pitch || 1}
+                                                            onChange={(e) => setFormData(p => ({ 
+                                                                ...p, 
+                                                                tts_config: { ...(p.tts_config || { voiceName: '', rate: 1 }), pitch: parseFloat(e.target.value) } 
+                                                            }))}
                                                             style={{ width: '100%' }}
                                                         />
                                                     </div>
@@ -1774,8 +1910,11 @@ export default function QuestionManagement() {
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '12px', color: '#64748B', marginBottom: '4px' }}>Voice</label>
                                                 <select
-                                                    value={topicForm.tts_config.voiceName}
-                                                    onChange={(e) => setTopicForm(p => ({ ...p, tts_config: { ...p.tts_config, voiceName: e.target.value } }))}
+                                                    value={topicForm.tts_config?.voiceName || ''}
+                                                    onChange={(e) => setTopicForm(p => ({ 
+                                                        ...p, 
+                                                        tts_config: { ...(p.tts_config || { rate: 1, pitch: 1 }), voiceName: e.target.value } 
+                                                    }))}
                                                     style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '13px' }}
                                                 >
                                                     {availableVoices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}

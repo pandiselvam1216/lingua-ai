@@ -7,7 +7,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models.user import User, Role
 from app.models.attempt import Attempt, Score
-from app.models.module import Module, Question, ListeningModule
+from app.models.module import Module, Question, ListeningModule, Submodule, Topic
 from app.utils.decorators import role_required
 import uuid
 from werkzeug.security import generate_password_hash
@@ -412,6 +412,8 @@ def create_question():
         sub_module=data.get('sub_module'),
         word_limit=data.get('word_limit', 150),
         listening_module_id=data.get('listening_module_id'),
+        submodule_id=data.get('submodule_id'),
+        topic_id=data.get('topic_id'),
         category=data.get('category'),
         tts_config=json.dumps(data.get('tts_config')) if data.get('tts_config') else None
     )
@@ -476,6 +478,10 @@ def update_question(question_id):
         question.listening_module_id = data['listening_module_id']
     if 'category' in data:
         question.category = data['category']
+    if 'submodule_id' in data:
+        question.submodule_id = data['submodule_id']
+    if 'topic_id' in data:
+        question.topic_id = data['topic_id']
     if 'tts_config' in data:
         question.tts_config = json.dumps(data['tts_config']) if data['tts_config'] else None
     
@@ -618,3 +624,20 @@ def admin_delete_listening_content(item_id):
     db.session.commit()
     
     return jsonify({'message': 'Listening content deleted successfully'}), 200
+
+@admin_bp.route('/submodules/<int:module_id>', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_submodules(module_id):
+    """Get all submodules for a specific module"""
+    submodules = Submodule.query.filter_by(module_id=module_id).all()
+    return jsonify([s.to_dict() for s in submodules]), 200
+
+
+@admin_bp.route('/topics/<int:submodule_id>', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_topics(submodule_id):
+    """Get all topics for a specific submodule"""
+    topics = Topic.query.filter_by(submodule_id=submodule_id).all()
+    return jsonify([t.to_dict() for t in topics]), 200

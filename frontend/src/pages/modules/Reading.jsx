@@ -135,7 +135,7 @@ export default function Reading() {
 
     if (loading) {
         return (
-            <div className="page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+            <div className="page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px 16px' }}>
                 <div style={{ width: '48px', height: '48px', border: '4px solid #E5E7EB', borderTop: '4px solid #8B5CF6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
             </div>
         )
@@ -166,9 +166,9 @@ export default function Reading() {
         >
             <motion.div key={`passage-${currentIndex}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 {/* Header info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', width: 'fit-content', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: 'white', border: '1px solid #E5E7EB', borderRadius: '10px', width: 'fit-content', marginBottom: '24px' }}>
                     <Clock size={16} color={timeLeft < 60 ? '#EF4444' : '#8B5CF6'} />
-                    <span style={{ fontSize: '14px', fontWeight: '600', color: timeLeft < 60 ? '#EF4444' : '#111827', fontFamily: 'monospace' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '700', color: timeLeft < 60 ? '#EF4444' : '#111827', fontFamily: 'monospace' }}>
                         {formatTime(timeLeft)}
                     </span>
                 </div>

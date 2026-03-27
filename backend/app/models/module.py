@@ -14,13 +14,14 @@ class Module(db.Model):
     name = db.Column(db.String(50), unique=True, nullable=False)
     slug = db.Column(db.String(50), unique=True, nullable=False)
     description = db.Column(db.Text)
-    icon = db.Column(db.String(50))  # Icon name for frontend
-    color = db.Column(db.String(20))  # Theme color
+    icon = db.Column(db.String(50))
+    color = db.Column(db.String(20))
     order = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
+    submodules = db.relationship('Submodule', backref='module', lazy='dynamic')
     questions = db.relationship('Question', back_populates='module', lazy='dynamic')
     
     def to_dict(self):
@@ -48,20 +49,68 @@ class Module(db.Model):
         ]
 
 
-
-class ListeningModule(db.Model):
-    """Structured listening content (not questions)"""
-    __tablename__ = 'listening_modules'
+class Submodule(db.Model):
+    """Sub-categories within a module (e.g., Grammar -> Tenses)"""
+    __tablename__ = 'submodules'
     
-    id = db.Column(db.String(36), primary_key=True) # UUID as string for SQLite compatibility if needed, but the plan says UUID
-    title = db.Column(db.String(200), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    category = db.Column(db.String(100), nullable=True) # Category like 'Conversations', 'Lectures', etc.
-    audio_url = db.Column(db.Text, nullable=True) # Optional if TTS is used
-    tts_config = db.Column(db.Text, nullable=True) # JSON string for voice, rate, pitch
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.Integer, db.ForeignKey('modules.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    slug = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationship to questions
+    # Relationships
+    topics = db.relationship('Topic', backref='submodule', lazy='dynamic')
+    questions = db.relationship('Question', backref='submodule_obj', lazy='dynamic')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'module_id': self.module_id,
+            'name': self.name,
+            'slug': self.slug,
+            'description': self.description
+        }
+
+
+class Topic(db.Model):
+    """Specific topics within a submodule (e.g., Tenses -> Present Perfect)"""
+    __tablename__ = 'topics'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    submodule_id = db.Column(db.Integer, db.ForeignKey('submodules.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    slug = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    questions = db.relationship('Question', backref='topic_obj', lazy='dynamic')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'submodule_id': self.submodule_id,
+            'name': self.name,
+            'slug': self.slug,
+            'description': self.description
+        }
+
+
+class ListeningModule(db.Model):
+    """Structured listening content (referenced as a topic context in UI)"""
+    __tablename__ = 'listening_modules'
+    
+    id = db.Column(db.String(36), primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(100), nullable=True)
+    audio_url = db.Column(db.Text, nullable=True)
+    tts_config = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship to questions (Legacy link)
     questions = db.relationship('Question', backref='listening_module', lazy='dynamic')
     
     def to_dict(self):
@@ -83,38 +132,42 @@ class Question(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     module_id = db.Column(db.Integer, db.ForeignKey('modules.id'), nullable=False)
-    listening_module_id = db.Column(db.String(36), db.ForeignKey('listening_modules.id'), nullable=True) # Optional link to a specific passage
+    submodule_id = db.Column(db.Integer, db.ForeignKey('submodules.id'), nullable=True)
+    topic_id = db.Column(db.Integer, db.ForeignKey('topics.id'), nullable=True)
+    
+    # Legacy link for listening
+    listening_module_id = db.Column(db.String(36), db.ForeignKey('listening_modules.id'), nullable=True)
     
     # Question content
-    type = db.Column(db.String(50), nullable=False)  # 'mcq', 'short_answer', 'essay', 'audio', 'passage', 'speaking_prompt'
-    category = db.Column(db.String(100), nullable=True) # Subsection like 'Conversations', 'Tone & Emotion', etc.
+    type = db.Column(db.String(50), nullable=False)
+    category = db.Column(db.String(100), nullable=True) # Legacy category
     title = db.Column(db.String(200))
-    content = db.Column(db.Text, nullable=False)  # Question text or prompt
+    content = db.Column(db.Text, nullable=False)
     
-    # For audio/passage questions
-    media_url = db.Column(db.Text)  # Can be a URL or base64 data URI for audio
+    # Media
+    media_url = db.Column(db.Text)
     passage_text = db.Column(db.Text)
     pdf_name = db.Column(db.String(255))
     
-    # Answer options (for MCQ)
-    options = db.Column(db.JSON)  # List of options
-    correct_answer = db.Column(db.Text)  # Correct answer or key points
-    explanation = db.Column(db.Text)  # Explanation for the answer
+    # Options
+    options = db.Column(db.JSON)
+    correct_answer = db.Column(db.Text)
+    explanation = db.Column(db.Text)
     
     # Metadata
-    difficulty = db.Column(db.Integer, default=1)  # 1-5 scale
+    difficulty = db.Column(db.Integer, default=1)
     points = db.Column(db.Integer, default=10)
-    time_limit = db.Column(db.Integer)  # In seconds
-    tags = db.Column(db.JSON)  # List of tags
-    tts_config = db.Column(db.Text, nullable=True) # JSON string for voice, rate, pitch
+    time_limit = db.Column(db.Integer)
+    tags = db.Column(db.JSON)
+    tts_config = db.Column(db.Text, nullable=True)
     
-    # Writing specific
-    sub_module = db.Column(db.String(50)) # 'essay', 'email', 'letter', etc.
+    # Sub-module specific
+    sub_module = db.Column(db.String(50)) # Legacy submodule
     word_limit = db.Column(db.Integer, default=150)
     
     # Status
     is_active = db.Column(db.Boolean, default=True)
-    is_published = db.Column(db.Boolean, default=False)  # Published to students = visible in modules
+    is_published = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -127,6 +180,8 @@ class Question(db.Model):
         data = {
             'id': self.id,
             'module_id': self.module_id,
+            'submodule_id': self.submodule_id,
+            'topic_id': self.topic_id,
             'listening_module_id': self.listening_module_id,
             'type': self.type,
             'category': self.category,
