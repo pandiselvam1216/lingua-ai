@@ -225,6 +225,7 @@ export default function Writing() {
             onShowRules={() => setShowRules(true)}
             onCloseRules={() => setShowRules(false)}
             rulesList={WRITING_RULES}
+            onBack={() => setActiveSubmodule(null)}
         >
             <motion.div key={`prompt-${currentIndex}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
 
@@ -332,6 +333,18 @@ export default function Writing() {
                                     </div>
                                 </div>
                             </div>
+
+                            {feedback.aiFeedback && (
+                                <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#FFFBEB', borderRadius: '12px', border: '1px solid #FEF3C7' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                        <Sparkles size={16} color="#D97706" />
+                                        <span style={{ fontSize: '14px', fontWeight: '700', color: '#92400E' }}>Coach's Advice</span>
+                                    </div>
+                                    <p style={{ fontSize: '15px', color: '#B45309', margin: 0, lineHeight: '1.6', fontStyle: 'italic' }}>
+                                        "{feedback.aiFeedback}"
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="grid-2col" style={{ marginBottom: '24px' }}>
                                 {Object.entries(feedback.feedback || {}).map(([key, value]) => (

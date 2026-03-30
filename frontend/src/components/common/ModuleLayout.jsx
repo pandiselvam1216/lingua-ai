@@ -24,6 +24,7 @@ export default function ModuleLayout({
     showRules,
     onCloseRules,
     rulesList = [],
+    onBack,
     children
 }) {
     const questionProgress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0
@@ -34,7 +35,7 @@ export default function ModuleLayout({
                 <div className="card" style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px', position: 'relative'
                 }}>
-                    <button onClick={() => window.history.back()} style={{ position: 'absolute', top: '24px', left: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500' }}>
+                    <button onClick={() => onBack ? onBack() : window.history.back()} style={{ position: 'absolute', top: '24px', left: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500' }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg> Go Back
                     </button>
                     <Icon size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />
