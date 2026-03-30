@@ -59,7 +59,8 @@ export async function getModuleQuestions(module) {
     // Network-First: Always try the API first
     try {
         console.log(`[QuestionService] Fetching ${module} from ${endpoint.path}`)
-        const response = await api.get(endpoint.path);
+        const url = endpoint.path.includes('?') ? `${endpoint.path}&limit=1000` : `${endpoint.path}?limit=1000`;
+        const response = await api.get(url);
         const data = response.data[endpoint.key];
 
         if (data && data.length > 0) {
