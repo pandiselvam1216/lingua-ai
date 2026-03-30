@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, Send, Clock, RotateCcw, AlertCircle, Volume2, CheckCircle, ChevronRight, Award, ChevronLeft, ArrowLeft, MessageCircle, User, Users, Megaphone, Presentation, Briefcase, List, Smile, BookOpen, Image as ImageIcon, MessageSquare } from 'lucide-react'
 import { evaluateSpeaking, saveModuleScore } from '../../utils/localScoring'
 import { getModuleQuestions } from '../../services/questionService'
+import useSyncUpdate from '../../hooks/useSyncUpdate'
 import ModuleLayout from '../../components/common/ModuleLayout'
 import Modal from '../../components/common/Modal'
 
@@ -62,6 +63,9 @@ export default function Speaking() {
             if (recognitionRef.current) recognitionRef.current.abort()
         }
     }, [activeSubmodule])
+    
+    // Subscribe to live updates using custom hook
+    useSyncUpdate('speaking', fetchPrompts)
 
     const fetchPrompts = async () => {
         try {

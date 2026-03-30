@@ -35,9 +35,9 @@ api.interceptors.response.use(
             return api(originalRequest)
         }
 
-        // NOTE: We don't auto-redirect on 401 here to prevent infinite login loops 
-        // if a non-critical endpoint fails. The AuthContext handles token expiration.
-        if (error.response?.status === 401) {
+        // Suppress console warnings for 401 errors on the /auth/me endpoint, 
+        // as this is expected when a session is expired or stale on load.
+        if (error.response?.status === 401 && !originalRequest.url.includes('/auth/me')) {
             console.warn('[API] 401 Unauthorized:', originalRequest.url);
         }
 

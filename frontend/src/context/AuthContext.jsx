@@ -29,10 +29,11 @@ export function AuthProvider({ children }) {
                 })
                 setSessionStartTime(new Date())
             } catch (err) {
-                console.error('[Auth] Token validation failed:', err)
-                // If it's a 401, clear the stale token
+                // If it's a 401, clear the stale token silently as it's expected for expired sessions
                 if (err.response?.status === 401) {
                     logout()
+                } else {
+                    console.error('[Auth] Token validation failed:', err)
                 }
             } finally {
                 setLoading(false)

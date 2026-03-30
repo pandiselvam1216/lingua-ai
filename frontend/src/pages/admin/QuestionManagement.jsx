@@ -9,6 +9,7 @@ import api from '../../services/api'
 import listeningService from '../../services/listeningService'
 import Modal from '../../components/common/Modal'
 import AudioPlayer from '../../components/common/AudioPlayer'
+import syncService from '../../services/syncService'
 
 const moduleIcons = {
     listening: Headphones,
@@ -614,6 +615,8 @@ export default function QuestionManagement() {
                 })
             }
             setSaveSuccess(true)
+            // Broadcast live update to other tabs
+            syncService.broadcast('questions_updated', { module: activeModule })
             setTimeout(() => setSaveSuccess(false), 3000)
             handleCloseModal()
         } catch (err) {

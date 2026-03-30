@@ -5,6 +5,7 @@ import api from '../../services/api'
 import { getAICriticalThinkingFeedback, generateJAMTopics } from '../../services/aiService'
 import { getModuleQuestions } from '../../services/questionService'
 import { saveModuleScore } from '../../utils/localScoring'
+import syncService from '../../services/syncService'
 import ModuleRulesModal from '../../components/common/ModuleRulesModal'
 
 export default function CriticalThinking() {
@@ -27,6 +28,17 @@ export default function CriticalThinking() {
     useEffect(() => {
         fetchPrompts()
         initSpeechRecognition()
+    }, [])
+    
+    // Subscribe to live updates from other tabs (Admin)
+    useEffect(() => {
+        const unsubscribe = syncService.subscribe((type, payload) => {
+            if (type === 'questions_updated' && payload.module === 'critical-thinking') {
+                console.log('[Sync] Critical Thinking questions updated, re-fetching...')
+                fetchPrompts()
+            }
+        })
+        return unsubscribe
     }, [])
 
     useEffect(() => {

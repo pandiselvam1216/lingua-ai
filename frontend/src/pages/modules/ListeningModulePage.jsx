@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom'
 import listeningService from '../../services/listeningService'
 import { getModuleQuestions } from '../../services/questionService'
 import { saveModuleScore } from '../../utils/localScoring'
+import useSyncUpdate from '../../hooks/useSyncUpdate'
 import AudioPlayer from '../../components/common/AudioPlayer'
 
 const LISTENING_CATEGORIES = [
@@ -68,6 +69,9 @@ export default function ListeningModulePage() {
             fetchCategoryData(selectedCategory.id)
         }
     }, [selectedCategory])
+    
+    // Subscribe to live updates using custom hook
+    useSyncUpdate('listening', () => selectedCategory && fetchCategoryData(selectedCategory.id))
 
     const fetchCategoryData = async (categoryId) => {
         setLoading(true)
@@ -309,13 +313,7 @@ export default function ListeningModulePage() {
                                                             disabled={showResult}
                                                             className={`answer-option ${stateClass}`}
                                                         >
-                                                            <span style={{ 
-                                                                width: '24px', height: '24px', borderRadius: '6px', 
-                                                                backgroundColor: isSelected ? 'currentColor' : '#F3F4F6',
-                                                                color: isSelected ? 'white' : '#6B7280',
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                fontSize: '12px', fontWeight: '700'
-                                                            }}>
+                                                            <span className="option-indicator">
                                                                 {option.value}
                                                             </span>
                                                             <span>{option.text}</span>
@@ -352,7 +350,7 @@ export default function ListeningModulePage() {
                                                     <button
                                                         onClick={handleSubmitQuiz}
                                                         disabled={!selectedAnswer}
-                                                        className="btn btn-primary"
+                                                        className="btn btn-primary btn-submit"
                                                         style={{ background: selectedAnswer ? undefined : '#E5E7EB', color: selectedAnswer ? undefined : '#9CA3AF' }}
                                                     >
                                                         <Check size={18} /> Submit Answer

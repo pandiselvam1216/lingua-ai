@@ -32,8 +32,11 @@ export default function ModuleLayout({
         return (
             <div style={{ padding: '32px', backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
                 <div className="card" style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px'
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px', position: 'relative'
                 }}>
+                    <button onClick={() => window.history.back()} style={{ position: 'absolute', top: '24px', left: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg> Go Back
+                    </button>
                     <Icon size={48} style={{ color: '#D1D5DB', marginBottom: '16px' }} />
                     <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0 }}>No {title.toLowerCase()} exercises available</h3>
                     <p style={{ color: '#6B7280', marginTop: '8px' }}>Check back later for new content.</p>

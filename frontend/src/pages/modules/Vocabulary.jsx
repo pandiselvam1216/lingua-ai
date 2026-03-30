@@ -150,26 +150,34 @@ function MultipleChoiceMode({ words, onFinish }) {
                 <span style={{ color: '#8B5CF6' }}>Score: {score}</span>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                <div className="card" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', color: 'white', padding: '24px' }}>
-                    <p style={{ fontSize: '12px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', fontWeight: 'bold' }}>Definition</p>
-                    <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{question.definition}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+                <div className="card" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', color: 'white', padding: '32px' }}>
+                    <p style={{ fontSize: '12px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '12px', fontWeight: '800' }}>Definition</p>
+                    <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, lineHeight: '1.6' }}>{question.definition}</p>
                 </div>
 
-                <div className="grid-2col">
-                {currentChoices.map(c => {
+                <div className="grid-2col" style={{ gap: '16px' }}>
+                {currentChoices.map((c, idx) => {
                     const isCorrect = c.word === question.word
                     const isSelected = selected === c.word
-                    let bg = 'white', border = '#E5E7EB', color = '#111827'
+                    
+                    let stateClass = ''
                     if (selected) {
-                        if (isCorrect) { bg = '#ECFDF5'; border = '#6EE7B7'; color = '#065F46' }
-                        else if (isSelected) { bg = '#FFF1F2'; border = '#FECDD3'; color = '#9F1239' }
+                        if (isCorrect) stateClass = 'correct'
+                        else if (isSelected) stateClass = 'wrong'
                     }
+
                     return (
-                        <button key={c.word} onClick={() => handleSelect(c)} className="btn" style={{ background: bg, border: `2px solid ${border}`, color, justifyContent: 'space-between', padding: '16px', fontSize: '16px', fontWeight: 'bold' }}>
-                            {c.word}
-                            {selected && isCorrect && <Check size={18} color="#059669" />}
-                            {selected && isSelected && !isCorrect && <X size={18} color="#E11D48" />}
+                        <button 
+                            key={c.word} 
+                            onClick={() => handleSelect(c)} 
+                            className={`answer-option ${stateClass}`}
+                            disabled={!!selected}
+                        >
+                            <span className="option-indicator">{String.fromCharCode(65 + idx)}</span>
+                            <span style={{ fontWeight: '600' }}>{c.word}</span>
+                            {selected && isCorrect && <Check size={18} style={{ marginLeft: 'auto' }} />}
+                            {selected && isSelected && !isCorrect && <X size={18} style={{ marginLeft: 'auto' }} />}
                         </button>
                     )
                 })}

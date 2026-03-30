@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckSquare, Star, Check, X, ChevronRight, Award, RotateCcw, Clock, Type, MapPin, Link, User, Sparkles, ChevronLeft, ArrowLeft } from 'lucide-react'
 import { getModuleQuestions } from '../../services/questionService'
+import useSyncUpdate from '../../hooks/useSyncUpdate'
 import { saveModuleScore } from '../../utils/localScoring'
 import ModuleLayout from '../../components/common/ModuleLayout'
 
@@ -27,7 +28,7 @@ export default function Grammar() {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [selectedAnswer, setSelectedAnswer] = useState(null)
     const [showResult, setShowResult] = useState(false)
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(false)
     const [score, setScore] = useState({ correct: 0, total: 0 })
     const [showRules, setShowRules] = useState(false)
     const [showCompletionTracker, setShowCompletionTracker] = useState(false)
@@ -46,15 +47,22 @@ export default function Grammar() {
     useEffect(() => {
         if (activeSubmodule) fetchQuestions()
     }, [activeSubmodule])
+    
+    // Subscribe to live updates using custom hook
+    useSyncUpdate('grammar', fetchQuestions)
 
     const fetchQuestions = async () => {
         try {
             setLoading(true)
             const data = await getModuleQuestions('grammar')
             // Filter questions by active submodule
-            // Default to 'tense' if no sub_module is specified to support old questions
-            const filtered = data.filter(q => (q.sub_module === activeSubmodule) || (!q.sub_module && activeSubmodule === 'tense'))
+            const filtered = data.filter(q => {
+               const qSub = (q.sub_module || '').toLowerCase()
+               const activeSub = (activeSubmodule || '').toLowerCase()
+               return (qSub === activeSub) || (!qSub && activeSub === 'tense')
+            })
             setQuestions(filtered)
+            setCurrentIndex(0) // Ensure we start fresh on category change
         } catch (error) {
             console.error('Failed to fetch questions:', error)
         } finally {
@@ -62,8 +70,8 @@ export default function Grammar() {
         }
     }
 
-    const currentQuestion = questions[currentIndex]
-    const scorePercent = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0
+    const currentQuestion = questions && questions.length > 0 ? questions[currentIndex] : null
+    const scorePercent = questions && questions.length > 0 ? Math.round((score.correct / questions.length) * 100) : 0
 
     const handleCheckAnswer = () => {
         if (!selectedAnswer || showResult) return
@@ -72,16 +80,20 @@ export default function Grammar() {
         setShowResult(true)
 
         setScore(prev => {
+            // Only add to score if it's the first time we're answering this question correctly
+            const alreadyCorrect = completedQuestions.includes(currentQuestion.id)
+            if (alreadyCorrect) return prev
+            
             const newScore = { correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }
             if (currentIndex === questions.length - 1) {
-                const finalPercent = Math.round((newScore.correct / newScore.total) * 100)
-                saveModuleScore('grammar', finalPercent, newScore.total * 60)
+                const finalPercent = Math.round((newScore.correct / questions.length) * 100)
+                saveModuleScore('grammar', finalPercent, questions.length * 60)
             }
             return newScore
         })
 
-        if (isCorrect && !completedQuestions.includes(currentIndex)) {
-            setCompletedQuestions(prev => [...prev, currentIndex])
+        if (isCorrect && !completedQuestions.includes(currentQuestion.id)) {
+            setCompletedQuestions(prev => [...prev, currentQuestion.id])
         }
     }
 
@@ -100,7 +112,6 @@ export default function Grammar() {
         setSelectedAnswer(null)
         setShowResult(false)
         setScore({ correct: 0, total: 0 })
-        setCompletedQuestions([])
     }
 
     if (!activeSubmodule) {
@@ -194,11 +205,11 @@ export default function Grammar() {
             title={currentSubmodule?.title ? `Grammar: ${currentSubmodule.title}` : "Grammar Practice"}
             description={currentSubmodule?.desc || "Master English grammar rules with interactive exercises"}
             score={score.correct}
-            totalScore={score.total}
-            scoreDisplay={`${score.correct}/${score.total} (${scorePercent}%)`}
+            totalScore={questions.length}
+            scoreDisplay={`${score.correct}/${questions.length} (${Math.round((score.correct / questions.length) * 100) || 0}%)`}
             questions={questions}
             currentIndex={currentIndex}
-            completedQuestions={completedQuestions}
+            completedQuestions={questions ? questions.map((q, i) => (Array.isArray(completedQuestions) && completedQuestions.includes(q.id)) ? i : null).filter(x => x !== null) : []}
             onSelectQuestion={(idx) => {
                 if (showResult && currentIndex === idx) return
                 setCurrentIndex(idx)
@@ -252,13 +263,7 @@ export default function Grammar() {
                                 className={className}
                                 style={{ width: '100%', cursor: showResult ? 'default' : 'pointer' }}
                             >
-                                <div style={{
-                                    width: '32px', height: '32px', borderRadius: '8px',
-                                    backgroundColor: showCorrect ? '#22C55E' : showWrong ? '#EF4444' : isSelected ? '#EF4444' : '#F3F4F6',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    color: (showCorrect || showWrong || isSelected) ? 'white' : '#6B7280',
-                                    fontWeight: '700', fontSize: '14px'
-                                }}>
+                                <div className="option-indicator">
                                     {String.fromCharCode(65 + idx)}
                                 </div>
                                 <span style={{ fontSize: '16px', fontWeight: isSelected ? '600' : '400' }}>
@@ -280,7 +285,7 @@ export default function Grammar() {
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                     {!showResult ? (
-                        <button onClick={handleCheckAnswer} disabled={!selectedAnswer} className="btn btn-primary" style={{ background: selectedAnswer ? '#EF4444' : '#E5E7EB', color: selectedAnswer ? 'white' : '#9CA3AF' }}>
+                        <button onClick={handleCheckAnswer} disabled={!selectedAnswer} className="btn btn-primary btn-submit" style={{ background: selectedAnswer ? undefined : '#E5E7EB', color: selectedAnswer ? 'white' : '#9CA3AF' }}>
                             <Check size={18} /> Check Answer
                         </button>
                     ) : currentIndex < questions.length - 1 ? (

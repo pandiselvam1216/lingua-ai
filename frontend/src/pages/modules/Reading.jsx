@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { BookOpen, Clock, Send, CheckCircle, XCircle, ChevronRight, Upload, X, Award, RotateCcw, Info } from 'lucide-react'
 import api from '../../services/api'
 import { getModuleQuestions } from '../../services/questionService'
+import useSyncUpdate from '../../hooks/useSyncUpdate'
 import { saveModuleScore } from '../../utils/localScoring'
 import ModuleLayout from '../../components/common/ModuleLayout'
 
@@ -41,6 +42,9 @@ export default function Reading() {
     useEffect(() => {
         fetchPassages()
     }, [])
+    
+    // Subscribe to live updates using custom hook
+    useSyncUpdate('reading', fetchPassages)
 
     useEffect(() => {
         if (!submitted && timeLeft > 0) {
@@ -101,8 +105,8 @@ export default function Reading() {
 
     const onScore = (score) => {
         saveModuleScore('reading', score, 600 - timeLeft)
-        if (!completedPassages.includes(currentIndex)) {
-            setCompletedPassages(prev => [...prev, currentIndex])
+        if (!completedPassages.includes(currentPassage.id)) {
+            setCompletedPassages(prev => [...prev, currentPassage.id])
         }
     }
 
@@ -153,7 +157,7 @@ export default function Reading() {
             totalScore={passages.length}
             questions={passages}
             currentIndex={currentIndex}
-            completedQuestions={completedPassages}
+            completedQuestions={passages.map((p, i) => completedPassages.includes(p.id) ? i : null).filter(x => x !== null)}
             onSelectQuestion={(idx) => {
                 if (submitted && !results) return
                 setCurrentIndex(idx)
@@ -237,16 +241,16 @@ export default function Reading() {
                                                         else if (isSelected) className += 'selected'
 
                                                         return (
-                                                            <label key={optVal} className={className} style={{ cursor: submitted ? 'default' : 'pointer' }}>
+                                                            <label key={optVal} className={className} style={{ cursor: submitted ? 'default' : 'pointer', gap: '16px' }}>
                                                                 <input
                                                                     type="radio"
                                                                     checked={isSelected}
                                                                     onChange={() => handleAnswerChange(idx, optVal)}
                                                                     disabled={submitted}
-                                                                    style={{ accentColor: '#8B5CF6' }}
+                                                                    style={{ display: 'none' }}
                                                                 />
-                                                                <span style={{ fontWeight: '600' }}>{optVal}.</span>
-                                                                <span>{optText}</span>
+                                                                <span className="option-indicator">{optVal}</span>
+                                                                <span style={{ fontSize: '15px' }}>{optText}</span>
                                                             </label>
                                                         )
                                                     })}
@@ -280,7 +284,7 @@ export default function Reading() {
 
                             <div style={{ display: 'flex', gap: '12px' }}>
                                 {!submitted ? (
-                                    <button onClick={handleSubmit} disabled={Object.keys(answers).length === 0} className="btn btn-primary" style={{ background: Object.keys(answers).length > 0 ? '#8B5CF6' : '#E5E7EB', color: Object.keys(answers).length > 0 ? 'white' : '#9CA3AF' }}>
+                                    <button onClick={handleSubmit} disabled={Object.keys(answers).length === 0} className="btn btn-primary btn-submit" style={{ background: Object.keys(answers).length > 0 ? undefined : '#E5E7EB', color: Object.keys(answers).length > 0 ? 'white' : '#9CA3AF' }}>
                                         <Send size={16} /> Submit
                                     </button>
                                 ) : currentIndex < passages.length - 1 ? (

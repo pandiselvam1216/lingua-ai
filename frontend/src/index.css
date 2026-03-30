@@ -419,44 +419,93 @@ p {
   background-color: #E5E7EB;
 }
 
-/* Answer Options */
+/* Answer Options - Static Design */
 .answer-option {
   width: 100%;
-  padding: 16px 20px;
-  border-radius: 12px;
-  border: 2px solid #E5E7EB;
+  padding: 16px 24px;
+  border-radius: 16px;
+  border: 2px solid #F3F4F6;
   background-color: #FFFFFF;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
   text-align: left;
-  transition: all 0.2s;
-  font-size: 15px;
-  color: #1F2937;
+  font-size: 16px;
+  color: #374151;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
 }
 
-.answer-option:not([disabled]):hover {
-  border-color: #D1D5DB;
-  background-color: #F9FAFB;
+.option-indicator {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  background-color: #F3F4F6;
+  color: #6B7280;
 }
 
+
+/* Selected State */
 .answer-option.selected {
   border-color: #3B82F6;
   background-color: #EFF6FF;
-  font-weight: 500;
+  color: #1E40AF;
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1);
 }
 
+.answer-option.selected .option-indicator {
+  background-color: #3B82F6;
+  color: white;
+}
+
+/* Correct State */
 .answer-option.correct {
-  border-color: #22C55E;
-  background-color: #F0FDF4;
+  border-color: #10B981;
+  background-color: #ECFDF5;
+  color: #065F46;
+  box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1);
 }
 
+.answer-option.correct .option-indicator {
+  background-color: #10B981;
+  color: white;
+}
+
+/* Wrong State */
 .answer-option.wrong {
   border-color: #EF4444;
   background-color: #FEF2F2;
+  color: #991B1B;
+  box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.1);
+}
+
+.answer-option.wrong .option-indicator {
+  background-color: #EF4444;
+  color: white;
 }
 
 .answer-option[disabled] {
   cursor: default;
 }
+
+/* Submit Button Enhancement */
+.btn-submit {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #1A73E8 0%, #1557B0 100%);
+  color: white;
+  box-shadow: 0 4px 14px rgba(26, 115, 232, 0.3);
+  border-radius: 14px;
+}
+
+.btn-submit:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4);
+}

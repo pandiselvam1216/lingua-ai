@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PenTool, Send, Clock, CheckCircle, ChevronRight, ChevronLeft, Award, RotateCcw, AlertCircle, Sparkles, FileText, Mail, ArrowLeft, BookOpen, MessageSquare, ClipboardList, AlignLeft, Play } from 'lucide-react'
 import { getModuleQuestions } from '../../services/questionService'
+import useSyncUpdate from '../../hooks/useSyncUpdate'
 import { evaluateWriting, saveModuleScore } from '../../utils/localScoring'
 import { getAIWritingFeedback } from '../../services/aiService'
 import ModuleLayout from '../../components/common/ModuleLayout'
@@ -47,6 +48,9 @@ export default function Writing() {
     useEffect(() => {
         fetchPrompts()
     }, [activeSubmodule])
+    
+    // Subscribe to live updates using custom hook
+    useSyncUpdate('writing', fetchPrompts)
 
     useEffect(() => {
         const timer = setInterval(() => {
