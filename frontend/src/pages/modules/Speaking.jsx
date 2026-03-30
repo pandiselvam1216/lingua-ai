@@ -67,7 +67,7 @@ export default function Speaking() {
     // Subscribe to live updates using custom hook
     useSyncUpdate('speaking', fetchPrompts)
 
-    const fetchPrompts = async () => {
+    async function fetchPrompts() {
         try {
             setLoading(true)
             const data = await getModuleQuestions('speaking')

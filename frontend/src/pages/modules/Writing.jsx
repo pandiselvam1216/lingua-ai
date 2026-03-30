@@ -59,7 +59,7 @@ export default function Writing() {
         return () => clearInterval(timer)
     }, [feedback, activeSubmodule])
 
-    const fetchPrompts = async () => {
+    async function fetchPrompts() {
         try {
             setLoading(true)
             const data = await getModuleQuestions('writing')

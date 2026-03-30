@@ -73,7 +73,7 @@ export default function ListeningModulePage() {
     // Subscribe to live updates using custom hook
     useSyncUpdate('listening', () => selectedCategory && fetchCategoryData(selectedCategory.id))
 
-    const fetchCategoryData = async (categoryId) => {
+    async function fetchCategoryData(categoryId) {
         setLoading(true)
         try {
             // Fetch library content

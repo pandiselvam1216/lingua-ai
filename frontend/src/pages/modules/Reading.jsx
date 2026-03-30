@@ -53,7 +53,7 @@ export default function Reading() {
         }
     }, [submitted, timeLeft])
 
-    const fetchPassages = async () => {
+    async function fetchPassages() {
         try {
             const response = await api.get('/reading/passages')
             if (response.data.passages?.length > 0) {

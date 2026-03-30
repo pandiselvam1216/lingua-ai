@@ -51,7 +51,7 @@ export default function Grammar() {
     // Subscribe to live updates using custom hook
     useSyncUpdate('grammar', fetchQuestions)
 
-    const fetchQuestions = async () => {
+    async function fetchQuestions() {
         try {
             setLoading(true)
             const data = await getModuleQuestions('grammar')

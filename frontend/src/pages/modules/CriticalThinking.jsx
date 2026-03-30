@@ -73,7 +73,7 @@ export default function CriticalThinking() {
         }
     }
 
-    const fetchPrompts = async () => {
+    async function fetchPrompts() {
         try {
             const aiTopics = await generateJAMTopics()
             if (aiTopics && aiTopics.length > 0) {
