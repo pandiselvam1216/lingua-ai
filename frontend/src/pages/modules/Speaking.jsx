@@ -284,6 +284,7 @@ export default function Speaking() {
             onShowRules={() => setShowRules(true)}
             onCloseRules={() => setShowRules(false)}
             rulesList={SPEAKING_RULES}
+            onBack={() => setActiveSubmodule(null)}
         >
             <motion.div key={`prompt-${currentIndex}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 {/* Back to submodules header */}

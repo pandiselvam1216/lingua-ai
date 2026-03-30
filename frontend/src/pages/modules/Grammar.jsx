@@ -220,6 +220,7 @@ export default function Grammar() {
             onShowRules={() => setShowRules(true)}
             onCloseRules={() => setShowRules(false)}
             rulesList={GRAMMAR_RULES}
+            onBack={() => setActiveSubmodule(null)}
         >
             <motion.div key={activeSubmodule + '-' + currentIndex} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="card">
                 
